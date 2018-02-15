@@ -1,0 +1,9 @@
+<Bindings>
+  <Binding name="PMEPGPOPEN" header="PMEPGPB">
+    if not PMEPGP:IsVisible() then
+      PMEPGP:Show()
+    else
+      PMEPGP:Hide()
+    end
+  </Binding>
+</Bindings>

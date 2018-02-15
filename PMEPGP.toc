@@ -1,0 +1,8 @@
+## Interface: 70300
+## Title: |cFFF2E699PM|r EPGP
+## Notes: EPGP implementation for Primori Morte.
+## Version: 0.1
+## Author: AcidWeb
+
+Embeds.xml
+PMEPGP.xml
