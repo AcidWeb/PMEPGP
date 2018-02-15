@@ -11,6 +11,8 @@ local GetNumGuildMembers = _G.GetNumGuildMembers
 local GetGuildRosterInfo = _G.GetGuildRosterInfo
 local GetGuildInfoText = _G.GetGuildInfoText
 local GuildRoster = _G.GuildRoster
+local IsInRaid = _G.IsInRaid
+local UnitInRaid = _G.UnitInRaid
 -- CanEditOfficerNote()
 -- GuildRosterSetOfficerNote(index, "note")
 
@@ -20,6 +22,7 @@ PM.TableData = {}
 PM.AltCache = {}
 PM.Config = {["BaseGP"] = 1, ["Decay"] = 0, ["MinEP"] = 0, ["EAM"] = 100}
 PM.SBFilter = "ALL"
+PM.IsInRaid = false
 SLASH_PMEPGP1 = "/pmepgp"
 SLASH_PMEPGP2 = "/ep"
 
@@ -91,7 +94,7 @@ function PM:OnLoad(self)
 	PM.ModeButton.frame:SetParent(_G.PMEPGP)
 	PM.ModeButton.frame:SetPoint("BOTTOMRIGHT", _G.PMEPGP, "BOTTOMRIGHT", -15, 14)
 	PM.ModeButton:SetWidth(100)
-	PM.ModeButton:SetText("Guild")
+	PM.ModeButton:SetCallback("OnClick", function() PM:UpdateGUI(true) end)
 	PM.ModeButton.frame:Show()
 	PM.MassEPButton = GUI:Create("Button")
 	PM.MassEPButton.frame:SetParent(_G.PMEPGP)
@@ -107,7 +110,6 @@ function PM:OnLoad(self)
 	PM.ArmorDropdown:SetValue("ALL")
 	PM.ArmorDropdown:SetCallback("OnValueChanged", PM.OnArmorChange)
 	PM.ArmorDropdown.frame:Show()
-	--btn:SetCallback("OnClick", function() print("Click!") end)
 end
 
 function PM:OnEvent(self, event, name, ...)
@@ -144,7 +146,17 @@ end
 
 -- Main functions
 
-function PM:UpdateGUI()
+function PM:UpdateGUI(override)
+	if override then
+		PM.IsInRaid = not PM.IsInRaid
+	else
+		PM.IsInRaid = IsInRaid()
+	end
+	if PM.IsInRaid then
+		PM.ModeButton:SetText("Raid")
+	else
+		PM.ModeButton:SetText("Guild")
+	end
 	PM:GetGuildData()
 	PM:GetScoreBoardData()
 	if #PM.ScoreBoard.data == 0 then
@@ -225,8 +237,22 @@ function PM:GetPRColor(realrow, table)
 end
 
 function PM:ScoreBoardFilter(rowdata)
+	local raidFilter = false
+	if PM.IsInRaid then
+		if UnitInRaid(rowdata[5]) then
+			raidFilter = true
+		else
+			foreach(PM.GuildData[rowdata[5]].Alts, function(_, alt)
+				if UnitInRaid(alt) then
+					raidFilter = true
+				end
+			end)
+		end
+	else
+		raidFilter = true
+	end
 	if PM.SBFilter == "ALL" or PM.Armors[PM.SBFilter][rowdata[6]] then
-		return true
+		return raidFilter and true
 	else
 		return false
 	end
