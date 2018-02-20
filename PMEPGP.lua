@@ -9,7 +9,7 @@ local DIA = LibStub("LibDialog-1.0")
 local DUMP = LibStub("LibTextDump-1.0")
 
 --GLOBALS: RAID_CLASS_COLORS, SLASH_PMEPGP1, SLASH_PMEPGP2, PMEPGP_AlertSystemTemplate, PMEPGP_Flogging
-local tonumber, tostring, pairs, ipairs, foreach, type, print, date, time, unpack = _G.tonumber, _G.tostring, _G.pairs, _G.ipairs, _G.foreach, _G.type, _G.print, _G.date, _G.time, _G.unpack
+local tonumber, tostring, pairs, type, print, date, time, unpack = _G.tonumber, _G.tostring, _G.pairs, _G.type, _G.print, _G.date, _G.time, _G.unpack
 local tinsert, tconcat, tsort = _G.table.insert, _G.table.concat, _G.table.sort
 local strsplit, strmatch = _G.string.split, _G.string.match
 local mfloor = _G.math.floor
@@ -137,9 +137,9 @@ function PM:OnEvent(self, event, name)
 				PM.Settings[key] = value
 			end
 		end
-		foreach(PM.Settings.Log, function (t, _)
+		for t, _ in pairs(PM.Settings.Log) do
 			tinsert(PM.LogIndex, t)
-		end)
+		end
 		GuildRoster()
 
 		PM.ModeButton = GUI:Create("Button")
@@ -482,9 +482,9 @@ function PM:GetGuildData()
 	if not CanViewOfficerNote() then return end
 
 	local altcache = {}
-	foreach(PM.GuildData, function(n, _)
+	for n, _ in pairs(PM.GuildData) do
 		PM.GuildData[n].Active = false
-	end)
+	end
 
 	for i=1, GetNumGuildMembers() do
 		local name, _, _, _, _, _, _, note, online, _, class = GetGuildRosterInfo(i)
@@ -529,7 +529,7 @@ function PM:GetScoreBoardData()
 		PM.TableData[i][7] = false
 	end
 
-	foreach(PM.GuildData, function(n, d)
+	for n, d in pairs(PM.GuildData) do
 		if d.Active and not d.Main then
 			if PM.TableIndex[n] then
 				local entry = PM.TableData[PM.TableIndex[n]]
@@ -548,7 +548,7 @@ function PM:GetScoreBoardData()
 				true})
 			end
 		end
-	end)
+	end
 end
 
 function PM:ShowLogs()
@@ -740,9 +740,9 @@ function PM:EditMassPoints(value, reason, fillreserve, awardreserve)
 
 	if awardreserve then
 		local reserve = {}
-		foreach(PM.Reserve, function (n, _)
+		for n, _ in pairs(PM.Reserve) do
 			tinsert(reserve, n)
-		end)
+		end
 		TAfter(1, function() PM:EditPoints(reserve, "EP", PM:Round(value * (PM.Config.EAM / 100), 0), reason) end)
 		PM.Reserve = {}
 	end
@@ -755,16 +755,16 @@ function PM:EditPointsDecay()
 
 	PM:GetGuildData()
 	local backup = {}
-	foreach(PM.GuildData, function (name, data)
+	for name, data in pairs(PM.GuildData) do
 		if data.Active and not data.Main then
 			backup[name] = data.EP..","..data.GP
 		elseif data.Active and data.Main then
 			backup[name] = data.Main
 		end
-	end)
+	end
 	PM.Settings.Backup[time(date('!*t', GetServerTime()))] = SER:Serialize(backup)
 
-	foreach(PM.GuildData, function (_, data)
+	for _, data in pairs(PM.GuildData) do
 		if data.Active and not data.Main and (data.EP > 0 or data.GP > 0) then
 			data.EP = PM:Round(data.EP * (1 - (PM.Config.Decay / 100)), 0)
 			data.GP = PM:Round(data.GP - ((data.GP + PM.Config.BaseGP) * (1 - (PM.Config.Decay / 100))), 0)
@@ -772,7 +772,7 @@ function PM:EditPointsDecay()
 			if data.GP < 0 then data.GP = 0 end
 			GuildRosterSetOfficerNote(data.ID, data.EP..","..data.GP)
 		end
-	end)
+	end
 
 	PM:SaveToLog({}, "DECAY", PM.Config.Decay, "", PM.PlayerName)
 
@@ -840,11 +840,11 @@ function PM:ScoreBoardFilter(rowdata)
 		if UnitInRaid(rowdata[5]) then
 			raidFilter = true
 		else
-			foreach(PM.GuildData[rowdata[5]].Alts, function(_, alt)
+			for _, alt in pairs(PM.GuildData[rowdata[5]].Alts) do
 				if UnitInRaid(alt) then
 					raidFilter = true
 				end
-			end)
+			end
 		end
 	elseif rowdata[2] == 0 then
 		raidFilter = false
