@@ -13,6 +13,7 @@ local tonumber, tostring, pairs, ipairs, foreach, type, print, date, time = _G.t
 local tinsert, tconcat, tsort = _G.table.insert, _G.table.concat, _G.table.sort
 local strsplit, strmatch = _G.string.split, _G.string.match
 local mfloor = _G.math.floor
+local TAfter = _G.C_Timer.After
 local CanViewOfficerNote = _G.CanViewOfficerNote
 local CanEditOfficerNote = _G.CanEditOfficerNote
 local GetNumGuildMembers = _G.GetNumGuildMembers
@@ -58,6 +59,7 @@ PM.OfficerDropDown = {
 PM.PlayerDropDown = {
 	{ text = "Edit points", notCheckable = true, func = function() DIA:Spawn("PMEPGPPlayerEdit", PM.ClickedPlayer); _G.L_CloseDropDownMenus() end },
 	{ text = "Toggle reserve status", notCheckable = true, func = function() PM:AddToReserve(PM.ClickedPlayer); _G.L_CloseDropDownMenus() end },
+	{ text = "Slap", notCheckable = true, func = function() PM:EditPoints(PM.ClickedPlayer, "EP", -50, "*slap*"); _G.L_CloseDropDownMenus() end },
 }
 PM.Armors = {
 	["CLOTH"] = {["MAGE"] = true, ["PRIEST"] = true, ["WARLOCK"] = true},
@@ -133,8 +135,8 @@ function PM:OnEvent(self, event, name)
 				PM.Settings[key] = value
 			end
 		end
-		foreach(PM.Settings.Log, function (time, _)
-			tinsert(PM.LogIndex, time)
+		foreach(PM.Settings.Log, function (t, _)
+			tinsert(PM.LogIndex, t)
 		end)
 		GuildRoster()
 
@@ -170,7 +172,7 @@ function PM:OnEvent(self, event, name)
 
 		PM.ScoreBoard:RegisterEvents({
 			["OnClick"] = function (_, _, data, _, _, realRow, _, _, button, _)
-				if PM.IsOfficer and button == "LeftButton" and realRow ~= nil then
+				if PM.IsOfficer and (button == "LeftButton" or button == "RightButton") and realRow ~= nil then
 					PM.ClickedPlayer = data[realRow][5]
 					_G.L_CloseDropDownMenus()
 					_G.L_EasyMenu(PM.PlayerDropDown, _G.PMEPGP_DropDown, "cursor", 0 , 0, "MENU")
@@ -342,6 +344,7 @@ function PM:OnEvent(self, event, name)
 		})
 
 		COM:RegisterComm("PMEPGP", PM.OnAddonMsg)
+		COM:SendCommMessage("PMEPGP", SER:Serialize("V;"..PM.Version), "GUILD", nil, "NORMAL")
 		self:UnregisterEvent("ADDON_LOADED")
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		local guildinfo = {strsplit("\n", GetGuildInfoText())}
@@ -381,13 +384,15 @@ function PM:OnAddonMsg(...)
 			if msg[1] == "A" then
 				PM.AlertSystem:AddAlert({msg[3], tonumber(msg[4])})
 			elseif msg[1] == "L" and sender ~= PM.PlayerName then
-				local time = tonumber(msg[3]) + 10
-				if not PM.Settings.Log[time] then
-					PM.Settings.Log[time] = msg[4]
-					tinsert(PM.LogIndex, time)
+				local t = tonumber(msg[3]) + 10
+				if not PM.Settings.Log[t] then
+					PM.Settings.Log[t] = msg[4]
+					tinsert(PM.LogIndex, t)
 					if _G.PMEPGP:IsVisible() then PM:UpdateGUI() end
 				end
 			end
+		elseif tonumber(msg[2]) > PM.Version then
+			print("|cFFF2E699[PM EPGP]|r Addon is out-of-date!")
 		end
 	end
 end
@@ -443,7 +448,6 @@ function PM:GetGuildData()
 		local ep, gp = strmatch(note, "^(%d+),(%d+)$")
 		name = strsplit("-", name)
 		if ep then
-
 			if PM.GuildData[name] then
 				local entry = PM.GuildData[name]
 				entry.EP = tonumber(ep)
@@ -510,7 +514,7 @@ function PM:ShowLogs()
 	tsort(PM.LogIndex, function (a, b) return a > b end)
 	for i=1, #PM.LogIndex do
 		local status, payload = SER:Deserialize(PM.Settings.Log[PM.LogIndex[i]])
-		local time = PM.LogIndex[i]
+		local t = PM.LogIndex[i]
 		local members = ""
 		local points = ""
 		local from = ""
@@ -522,7 +526,7 @@ function PM:ShowLogs()
 				from = payload[5]
 			end
 			if payload[2] == "DECAY" then
-				PM.DumpFrame:AddLine("["..date("%H:%M %d.%m.%y", time).."] |cFFFF0000DECAY "..payload[3].."%|r || "..from)
+				PM.DumpFrame:AddLine("["..date("%H:%M %d.%m.%y", t).."] |cFFFF0000DECAY "..payload[3].."%|r || "..from)
 				PM.DumpFrame:AddLine(" ")
 			else
 				for i=1, #payload[1] do
@@ -546,7 +550,7 @@ function PM:ShowLogs()
 						points = "|cFFFF0000"..payload[3].." "..payload[2].."|r"
 					end
 				end
-				PM.DumpFrame:AddLine("["..date("%H:%M %d.%m.%y", time).."] "..members.." || "..points.." || "..payload[4].." || "..from)
+				PM.DumpFrame:AddLine("["..date("%H:%M %d.%m.%y", t).."] "..members.." || "..points.." || "..payload[4].." || "..from)
 				PM.DumpFrame:AddLine(" ")
 			end
 		end
@@ -563,7 +567,7 @@ end
 function PM:SaveToLog(members, mode, value, reason, who)
 	if not PM.IsOfficer then return end
 
-	local time = time(date('!*t', GetServerTime()))
+	local t = time(date('!*t', GetServerTime()))
 	if type(members) ~= "table" then
 		members = {members}
 	end
@@ -579,9 +583,9 @@ function PM:SaveToLog(members, mode, value, reason, who)
 	end
 
 	local payload = SER:Serialize({members, mode, value, reason, who})
-	COM:SendCommMessage("PMEPGP", SER:Serialize("L;"..PM.Version..";"..time..";"..payload), "GUILD", nil, "BULK")
-	PM.Settings.Log[time] = payload
-	tinsert(PM.LogIndex, time)
+	COM:SendCommMessage("PMEPGP", SER:Serialize("L;"..PM.Version..";"..t..";"..payload), "GUILD", nil, "BULK")
+	PM.Settings.Log[t] = payload
+	tinsert(PM.LogIndex, t)
 end
 
 function PM:CheckNotes()
@@ -631,6 +635,8 @@ end
 function PM:EditPoints(members, mode, value, reason)
 	if not PM.IsOfficer then return end
 	local success = false
+	local rewarded = {}
+	local alreadyrewarded = {}
 
 	if type(members) ~= "table" then
 		members = {members}
@@ -644,7 +650,7 @@ function PM:EditPoints(members, mode, value, reason)
 			if player.Main then
 				player = PM.GuildData[player.Main]
 			end
-			if player and player.Active then
+			if player and player.Active and not alreadyrewarded[player.ID] then
 				if mode == "EP" then
 					player.EP = player.EP + value
 				elseif mode == "GP" then
@@ -653,20 +659,18 @@ function PM:EditPoints(members, mode, value, reason)
 				if player.EP < 0 then player.EP = 0 end
 				if player.GP < 0 then player.GP = 0 end
 				success = true
+				tinsert(rewarded, members[i])
+				alreadyrewarded[player.ID] = true
 				GuildRosterSetOfficerNote(player.ID, player.EP..","..player.GP)
 				if player.Online then
 					COM:SendCommMessage("PMEPGP", SER:Serialize("A;"..PM.Version..";"..mode..";"..value), "WHISPER", wtarget, "ALERT")
 				end
-			else
-				print("|cFFF2E699[PM EPGP]|r Failed to edit: "..members[i])
 			end
-		else
-			print("|cFFF2E699[PM EPGP]|r Failed to edit: "..members[i])
 		end
 	end
 
-	if success or #members > 1 then
-		PM:SaveToLog(members, mode, value, reason, PM.PlayerName)
+	if success or #rewarded > 1 then
+		PM:SaveToLog(rewarded, mode, value, reason, PM.PlayerName)
 	end
 	if _G.PMEPGP:IsVisible() then PM:UpdateGUI() end
 end
@@ -678,16 +682,20 @@ function PM:EditMassPoints(value, reason, fillreserve, awardreserve)
 	for i=1, #PM.ScoreBoard.filtered do
 		tinsert(members, PM.ScoreBoard.data[PM.ScoreBoard.filtered[i]][5])
 	end
+	PM:EditPoints(members, "EP", value, reason)
 
 	if fillreserve then
 		PM:FillReserve()
 	end
+
 	if awardreserve then
+		local reserve = {}
 		foreach(PM.Reserve, function (n, _)
-			tinsert(members, n)
+			tinsert(reserve, n)
 		end)
+		TAfter(1, function() PM:EditPoints(reserve, "EP", PM:Round(value * (PM.Config.EAM / 100), 0), reason) end)
+		PM.Reserve = {}
 	end
-	PM:EditPoints(PM:RemoveDuplicates(members), "EP", value, reason)
 
 	if _G.PMEPGP:IsVisible() then PM:UpdateGUI() end
 end
@@ -743,18 +751,19 @@ function PM:FillReserve()
 end
 
 function PM:GetNameScoreboard(name)
-	local nstr = ""
+	local nstr = "|c"..RAID_CLASS_COLORS[PM.GuildData[name].Class].colorStr..name.."|r"
+	local foundalt = false
 
-	if name == PM.PlayerName then
-		nstr = "|TInterface\\GROUPFRAME\\UI-Group-LeaderIcon:0|t"
-	end
-	nstr = nstr.."|c"..RAID_CLASS_COLORS[PM.GuildData[name].Class].colorStr..name.."|r"
 	if #PM.GuildData[name].Alts > 0 then
 		nstr = nstr.." |cFF808080(|r"
 		for i=1, #PM.GuildData[name].Alts do
+			if PM.GuildData[name].Alts[i] == PM.PlayerName then foundalt = true end
 			nstr = nstr.."|c"..RAID_CLASS_COLORS[PM.GuildData[PM.GuildData[name].Alts[i]].Class].colorStr..PM.GuildData[name].Alts[i].."|r|cFF808080,|r "
 		end
 		nstr = nstr:sub(1, -15).."|cFF808080)|r"
+	end
+	if name == PM.PlayerName or foundalt then
+		nstr = "|TInterface\\GROUPFRAME\\UI-Group-LeaderIcon:0|t"..nstr
 	end
 
 	return nstr
@@ -850,18 +859,6 @@ end
 function PM:Round(num, idp)
 	local mult = 10^(idp or 0)
 	return mfloor(num * mult + 0.5) / mult
-end
-
-function PM:RemoveDuplicates(tbl)
-	local hash = {}
-	local res = {}
-	for _, v in ipairs(tbl) do
-		if not hash[v] then
-			res[#res+1] = v
-			hash[v] = true
-		end
-	end
-	return res
 end
 
 function PMEPGP_AlertSystemTemplate(frame, payload)
