@@ -9,7 +9,7 @@ local DIA = LibStub("LibDialog-1.0")
 local DUMP = LibStub("LibTextDump-1.0")
 
 --GLOBALS: RAID_CLASS_COLORS, SLASH_PMEPGP1, SLASH_PMEPGP2, PMEPGP_AlertSystemTemplate, PMEPGP_Flogging
-local tonumber, tostring, pairs, ipairs, foreach, type, print, date, time = _G.tonumber, _G.tostring, _G.pairs, _G.ipairs, _G.foreach, _G.type, _G.print, _G.date, _G.time
+local tonumber, tostring, pairs, ipairs, foreach, type, print, date, time, unpack = _G.tonumber, _G.tostring, _G.pairs, _G.ipairs, _G.foreach, _G.type, _G.print, _G.date, _G.time, _G.unpack
 local tinsert, tconcat, tsort = _G.table.insert, _G.table.concat, _G.table.sort
 local strsplit, strmatch = _G.string.split, _G.string.match
 local mfloor = _G.math.floor
@@ -27,6 +27,7 @@ local GuildRosterSetOfficerNote = _G.GuildRosterSetOfficerNote
 local GuildRoster = _G.GuildRoster
 local SendChatMessage = _G.SendChatMessage
 local IsInRaid = _G.IsInRaid
+local IsAddOnLoaded = _G.IsAddOnLoaded
 local UnitName = _G.UnitName
 local UnitInRaid = _G.UnitInRaid
 local PlaySound = _G.PlaySound
@@ -130,6 +131,7 @@ function PM:OnEvent(self, event, name)
 		if not _G.PMEPGPDB then _G.PMEPGPDB = PM.DefaultSettings end
 		PM.Settings = _G.PMEPGPDB
 		PM.IsOfficer = PM.Settings.Debug or CanEditOfficerNote()
+		PM.AS = unpack(_G.AddOnSkins)
 		for key, value in pairs(PM.DefaultSettings) do
 			if PM.Settings[key] == nil then
 				PM.Settings[key] = value
@@ -170,6 +172,22 @@ function PM:OnEvent(self, event, name)
 			PM.OfficerButton:SetText("Logs")
 		end
 
+		if IsAddOnLoaded("ElvUI") and IsAddOnLoaded("AddOnSkins") then
+			PM.AS:SkinFrame(_G.PMEPGP)
+			PM.AS:SkinFrame(PM.ScoreBoard.frame, nil, true)
+			PM.AS:StripTextures(_G[PM.ScoreBoard.frame:GetName()..'ScrollTrough'], true)
+			PM.AS:SkinScrollBar(_G[PM.ScoreBoard.frame:GetName()..'ScrollFrameScrollBar'])
+			PM.AS:SkinCloseButton(_G.PMEPGP_CloseButton)
+			PM.ArmorDropdown.frame:ClearAllPoints()
+			PM.ModeButton.frame:ClearAllPoints()
+			PM.OfficerButton.frame:ClearAllPoints()
+			PM.ArmorDropdown.frame:SetPoint("BOTTOM", _G.PMEPGP, "BOTTOM", 0, 8)
+			PM.ModeButton.frame:SetPoint("BOTTOMRIGHT", _G.PMEPGP, "BOTTOMRIGHT", -15, 10)
+			PM.OfficerButton.frame:SetPoint("BOTTOMLEFT", _G.PMEPGP, "BOTTOMLEFT", 15, 10)
+			_G.PMEPGP_Title:ClearAllPoints()
+			_G.PMEPGP_Title:SetPoint("BOTTOM", _G.PMEPGP, "TOP", 0, -20)
+		end
+
 		PM.ScoreBoard:RegisterEvents({
 			["OnClick"] = function (_, _, data, _, _, realRow, _, _, button, _)
 				if PM.IsOfficer and (button == "LeftButton" or button == "RightButton") and realRow ~= nil then
@@ -193,6 +211,16 @@ function PM:OnEvent(self, event, name)
 				self.checkboxes[2]:ClearAllPoints()
 				self.checkboxes[2]:SetPoint("TOPRIGHT", self.editboxes[2], "BOTTOMRIGHT", -4, 0)
 				self.editboxes[1]:SetText(GetZoneText())
+				if IsAddOnLoaded("ElvUI") and IsAddOnLoaded("AddOnSkins") then
+					PM.AS:SkinFrame(self)
+					PM.AS:SkinCloseButton(self.close_button)
+					PM.AS:SkinButton(self.buttons[1])
+					PM.AS:SkinButton(self.buttons[2])
+					PM.AS:SkinCheckBox(self.checkboxes[1])
+					PM.AS:SkinCheckBox(self.checkboxes[2])
+					PM.AS:SkinFrame(self.editboxes[1])
+					PM.AS:SkinFrame(self.editboxes[2])
+				end
 			end,
 			buttons = {
 				{
@@ -264,6 +292,16 @@ function PM:OnEvent(self, event, name)
 				self.editboxes[1]:SetText(GetZoneText())
 				self.checkboxes[1]:SetChecked(false)
 				self.checkboxes[2]:SetChecked(false)
+				if IsAddOnLoaded("ElvUI") and IsAddOnLoaded("AddOnSkins") then
+					PM.AS:SkinFrame(self)
+					PM.AS:SkinCloseButton(self.close_button)
+					PM.AS:SkinButton(self.buttons[1])
+					PM.AS:SkinButton(self.buttons[2])
+					PM.AS:SkinCheckBox(self.checkboxes[1])
+					PM.AS:SkinCheckBox(self.checkboxes[2])
+					PM.AS:SkinFrame(self.editboxes[1])
+					PM.AS:SkinFrame(self.editboxes[2])
+				end
 			end,
 			buttons = {
 				{
@@ -329,6 +367,11 @@ function PM:OnEvent(self, event, name)
 			on_show = function(self)
 				self.text:SetText("Are you sure you want to execute "..tostring(PM.Config.Decay).."% decay?")
 				self.text:SetTextColor(1, 1, 1, 1)
+				if IsAddOnLoaded("ElvUI") and IsAddOnLoaded("AddOnSkins") then
+					PM.AS:SkinFrame(self)
+					PM.AS:SkinButton(self.buttons[1])
+					PM.AS:SkinButton(self.buttons[2])
+				end
 			end,
 			buttons = {
 				{
@@ -560,6 +603,13 @@ function PM:ShowLogs()
 		PM.DumpFrame:AddLine(" ")
 	end
 	PM.DumpFrame:Display()
+
+	if IsAddOnLoaded("ElvUI") and IsAddOnLoaded("AddOnSkins") then
+		PM.AS:SkinFrame(_G["LibTextDump-1.0_CopyFrame1"])
+		PM.AS:SkinFrame(_G["LibTextDump-1.0_CopyFrame1Inset"])
+		PM.AS:SkinCloseButton(_G["LibTextDump-1.0_CopyFrame1CloseButton"])
+		PM.AS:SkinScrollBar(_G["LibTextDump-1.0_CopyFrame1ScrollScrollBar"])
+	end
 end
 
 -- Support functions
