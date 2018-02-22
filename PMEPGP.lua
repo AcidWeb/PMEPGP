@@ -682,11 +682,11 @@ function PM:SetNotes()
 	end
 end
 
-function PM:EditPoints(members, mode, value, reason)
+function PM:EditPoints(members, mode, value, reason, rewardedid)
 	if not PM.IsOfficer then return end
 	local success = false
 	local rewarded = {}
-	local alreadyrewarded = {}
+	local rewardedid = rewardedid or {}
 
 	if type(members) ~= "table" then
 		members = {members}
@@ -700,7 +700,7 @@ function PM:EditPoints(members, mode, value, reason)
 			if player.Main then
 				player = PM.GuildData[player.Main]
 			end
-			if player and player.Active and not alreadyrewarded[player.ID] then
+			if player and player.Active and not rewardedid[player.ID] then
 				if mode == "EP" then
 					player.EP = player.EP + value
 				elseif mode == "GP" then
@@ -710,7 +710,7 @@ function PM:EditPoints(members, mode, value, reason)
 				if player.GP < 0 then player.GP = 0 end
 				success = true
 				tinsert(rewarded, members[i])
-				alreadyrewarded[player.ID] = true
+				rewardedid[player.ID] = true
 				GuildRosterSetOfficerNote(player.ID, player.EP..","..player.GP)
 				if player.Online then
 					COM:SendCommMessage("PMEPGP", SER:Serialize("A;"..PM.Version..";"..mode..";"..value), "WHISPER", wtarget, "ALERT")
@@ -721,6 +721,7 @@ function PM:EditPoints(members, mode, value, reason)
 
 	if success or #rewarded > 1 then
 		PM:SaveToLog(rewarded, mode, value, reason, PM.PlayerName)
+		return rewardedid
 	end
 	if _G.PMEPGP:IsVisible() then PM:UpdateGUI() end
 end
@@ -729,10 +730,11 @@ function PM:EditMassPoints(value, reason, fillreserve, awardreserve)
 	if not PM.IsOfficer then return end
 
 	local members = {}
+	local rewardedid = {}
 	for i=1, #PM.ScoreBoard.filtered do
 		tinsert(members, PM.ScoreBoard.data[PM.ScoreBoard.filtered[i]][5])
 	end
-	PM:EditPoints(members, "EP", value, reason)
+	rewardedid = PM:EditPoints(members, "EP", value, reason)
 
 	if fillreserve then
 		PM:FillReserve()
@@ -743,7 +745,7 @@ function PM:EditMassPoints(value, reason, fillreserve, awardreserve)
 		for n, _ in pairs(PM.Reserve) do
 			tinsert(reserve, n)
 		end
-		TAfter(1, function() PM:EditPoints(reserve, "EP", PM:Round(value * (PM.Config.EAM / 100), 0), reason) end)
+		TAfter(1, function() PM:EditPoints(reserve, "EP", PM:Round(value * (PM.Config.EAM / 100), 0), reason, rewardedid) end)
 		PM.Reserve = {}
 	end
 
