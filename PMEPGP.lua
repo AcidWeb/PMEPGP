@@ -67,6 +67,9 @@ PM.Armors = {
 	["LEATHER"] = {["DEMONHUNTER"] = true, ["DRUID"] = true, ["MONK"] = true, ["ROGUE"] = true},
 	["MAIL"] = {["HUNTER"] = true, ["SHAMAN"] = true},
 	["PLATE"] = {["DEATHKNIGHT"] = true, ["PALADIN"] = true, ["WARRIOR"] = true},
+	["CONQUEROR"] = {["DEMONHUNTER"] = true, ["PRIEST"] = true, ["PALADIN"] = true, ["WARLOCK"] = true},
+	["PROTECTOR"] = {["WARRIOR"] = true, ["HUNTER"] = true, ["SHAMAN"] = true, ["MONK"] = true},
+	["VANQUISHER"] = {["MAGE"] = true, ["ROGUE"] = true, ["DEATHKNIGHT"] = true, ["DRUID"] = true},
 }
 PM.ScoreBoardStructure = {
 	{
@@ -158,7 +161,8 @@ function PM:OnEvent(self, event, name)
 		PM.ArmorDropdown.frame:SetParent(_G.PMEPGP)
 		PM.ArmorDropdown.frame:SetPoint("BOTTOM", _G.PMEPGP, "BOTTOM", 0, 14)
 		PM.ArmorDropdown:SetWidth(100)
-		PM.ArmorDropdown:SetList({["ALL"] = "All", ["CLOTH"] = "Cloth", ["LEATHER"] = "Leather", ["MAIL"] = "Mail", ["PLATE"] = "Plate"})
+		PM.ArmorDropdown:SetList({["ALL"] = "All", ["CLOTH"] = "Cloth", ["LEATHER"] = "Leather", ["MAIL"] = "Mail", ["PLATE"] = "Plate", ["CONQUEROR"] = "Conqueror", ["PROTECTOR"] = "Protector", ["VANQUISHER"] = "Vanquisher"},
+		{"ALL", "CLOTH", "LEATHER", "MAIL", "PLATE", "CONQUEROR", "PROTECTOR", "VANQUISHER"})
 		PM.ArmorDropdown:SetValue("ALL")
 		PM.ArmorDropdown:SetCallback("OnValueChanged", PM.OnArmorValueChange)
 		PM.ArmorDropdown.frame:Show()
