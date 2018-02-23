@@ -169,7 +169,7 @@ function PM:OnEvent(self, event, name)
 		PM.ScoreBoard = ST:CreateST(PM.ScoreBoardStructure, 30, nil, nil, _G.PMEPGP)
 		PM.ScoreBoard.frame:SetPoint("TOPLEFT", _G.PMEPGP, "TOPLEFT", 17, -40)
 		PM.AlertSystem = _G.AlertFrame:AddSimpleAlertFrameSubSystem("PMEPGP_Alert", _G.PMEPGP_AlertSystemTemplate)
-		PM.DumpFrame = DUMP:New("PM EPGP - Logs")
+		PM.DumpFrame = DUMP:New("PM EPGP - Logs", nil, 540)
 		if PM.IsOfficer then
 			PM.OfficerButton:SetText("Officer tools")
 		else
@@ -459,6 +459,16 @@ function PM:OnArmorValueChange(_, armor)
 	PM.ScoreBoard:SetFilter(PM.ScoreBoardFilter)
 end
 
+function PM:OnHyperLinkEnter(linkData, _)
+	_G.GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+	_G.GameTooltip:SetHyperlink(linkData)
+	_G.GameTooltip:Show()
+end
+
+function PM:OnHyperLinkLeave()
+	_G.GameTooltip:Hide()
+end
+
 -- Main functions
 
 function PM:UpdateGUI(override)
@@ -608,11 +618,19 @@ function PM:ShowLogs()
 	end
 	PM.DumpFrame:Display()
 
+	PM.DumpFrameInternal = DUMP.frames[PM.DumpFrame]
+	PM.DumpFrameInternal:ClearAllPoints()
+	PM.DumpFrameInternal:SetPoint("LEFT", _G.PMEPGP, "RIGHT", 10, 0)
+	PM.DumpFrameInternal.edit_box:Disable()
+	PM.DumpFrameInternal.edit_box:SetHyperlinksEnabled(true)
+	PM.DumpFrameInternal.edit_box:SetScript("OnHyperlinkEnter", PM.OnHyperLinkEnter)
+	PM.DumpFrameInternal.edit_box:SetScript("OnHyperlinkLeave", PM.OnHyperLinkLeave)
+
 	if IsAddOnLoaded("ElvUI") and IsAddOnLoaded("AddOnSkins") then
-		PM.AS:SkinFrame(_G["LibTextDump-1.0_CopyFrame1"])
-		PM.AS:SkinFrame(_G["LibTextDump-1.0_CopyFrame1Inset"])
-		PM.AS:SkinCloseButton(_G["LibTextDump-1.0_CopyFrame1CloseButton"])
-		PM.AS:SkinScrollBar(_G["LibTextDump-1.0_CopyFrame1ScrollScrollBar"])
+		PM.AS:SkinFrame(PM.DumpFrameInternal)
+		PM.AS:SkinFrame(PM.DumpFrameInternal.Inset)
+		PM.AS:SkinCloseButton(PM.DumpFrameInternal.CloseButton)
+		PM.AS:SkinScrollBar(PM.DumpFrameInternal.scrollArea.ScrollBar)
 	end
 end
 
