@@ -121,6 +121,10 @@ PM.ScoreBoardStructure = {
 -- Event functions
 
 function PM:OnLoad(self)
+	if IsAddOnLoaded("RCLootCouncil_EPGP") or IsAddOnLoaded("epgp_lootmaster") or IsAddOnLoaded("epgp") then
+		PM.Unsupported = true
+		return
+	end
 	self:RegisterEvent("ADDON_LOADED")
 	self:RegisterEvent("GUILD_ROSTER_UPDATE")
 	self:RegisterForDrag("LeftButton")
@@ -541,6 +545,11 @@ end
 -- Main functions
 
 function PM:UpdateGUI(override)
+	if PM.Unsupported then
+		print("|cFFF2E699[PM EPGP]|r Unsupported addon detected!")
+		_G.PMEPGPFrame:Hide()
+		return
+	end
 	_G.L_CloseDropDownMenus()
 	if override then
 		PM.IsInRaid = not PM.IsInRaid
