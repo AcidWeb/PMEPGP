@@ -9,7 +9,7 @@ local DIA = LibStub("LibDialog-1.0")
 local DUMP = LibStub("LibTextDump-1.0")
 
 --GLOBALS: RAID_CLASS_COLORS, SLASH_PMEPGP1, SLASH_PMEPGP2, PMEPGP_AlertSystemTemplate, PMEPGP_Flogging
-local tonumber, tostring, pairs, type, print, date, time, unpack = _G.tonumber, _G.tostring, _G.pairs, _G.type, _G.print, _G.date, _G.time, _G.unpack
+local tonumber, tostring, pairs, type, print, date, time, unpack, select = _G.tonumber, _G.tostring, _G.pairs, _G.type, _G.print, _G.date, _G.time, _G.unpack, _G.select
 local tinsert, tconcat, tsort = _G.table.insert, _G.table.concat, _G.table.sort
 local strsplit, strmatch = _G.string.split, _G.string.match
 local mfloor = _G.math.floor
@@ -23,6 +23,7 @@ local GetGuildInfoText = _G.GetGuildInfoText
 local GetRaidRosterInfo = _G.GetRaidRosterInfo
 local GetZoneText = _G.GetZoneText
 local GetServerTime = _G.GetServerTime
+local GetItemInfo = _G.GetItemInfo
 local GuildRosterSetOfficerNote = _G.GuildRosterSetOfficerNote
 local GuildRoster = _G.GuildRoster
 local SendChatMessage = _G.SendChatMessage
@@ -70,6 +71,14 @@ PM.Armors = {
 	["CONQUEROR"] = {["DEMONHUNTER"] = true, ["PRIEST"] = true, ["PALADIN"] = true, ["WARLOCK"] = true},
 	["PROTECTOR"] = {["WARRIOR"] = true, ["HUNTER"] = true, ["SHAMAN"] = true, ["MONK"] = true},
 	["VANQUISHER"] = {["MAGE"] = true, ["ROGUE"] = true, ["DEATHKNIGHT"] = true, ["DRUID"] = true},
+}
+PM.GPModifiers = {
+	[0] = 50,
+	[5] = 50,
+	[10] = 125,
+	[15] = 225,
+	[20] = 350,
+	[25] = 500,
 }
 PM.ScoreBoardStructure = {
 	{
@@ -389,7 +398,61 @@ function PM:OnEvent(self, event, name)
 				},
 			},
 		})
+		DIA:Register("PMEPGPRewardEdit", {
+			static_size = true,
+			width = 300,
+			height = 115,
+			hide_on_escape = true,
+			is_exclusive = true,
+			text = "",
+			on_show = function(self)
+				local gp, gpdetails = PM:GetGP()
+				self.text:SetTextColor(1, 1, 1, 1)
+				self.text:SetText("Proposed GP cost: "..gpdetails)
+				self.editboxes[1]:SetText(gp)
+				if IsAddOnLoaded("ElvUI") and IsAddOnLoaded("AddOnSkins") then
+					PM.AS:SkinFrame(self)
+					PM.AS:SkinCloseButton(self.close_button)
+					PM.AS:SkinButton(self.buttons[1])
+					PM.AS:SkinButton(self.buttons[2])
+					PM.AS:SkinFrame(self.editboxes[1])
+				end
+			end,
+			buttons = {
+				{
+					text = "Add GP",
+					on_click = function(self)
+						local value = tonumber(self.editboxes[1]:GetText())
+						if value then
+							local name = strsplit("-", PM.Loot.awarded)
+							PM:EditPoints(name, "GP", value, PM.Loot.link)
+							PM:GetGuildData()
+							return false
+						else
+							print("|cFFF2E699[PM EPGP]|r The value must be a number!")
+							return true
+						end
+					end,
+				},
+				{
+					text = "Give for free",
+					on_click = function(_)
+						local name = strsplit("-", PM.Loot.awarded)
+						PM:EditPoints(name, "GP", 0, PM.Loot.link)
+						return false
+					end,
+				},
+			},
+			editboxes = {
+				{
+					label = "GP",
+					width = 150,
+				},
+			},
+		})
 
+		PM:GetGuildData()
+		PM:RCLHook()
 		COM:RegisterComm("PMEPGP", PM.OnAddonMsg)
 		COM:SendCommMessage("PMEPGP", SER:Serialize("V;"..PM.Version), "GUILD", nil, "NORMAL")
 		self:UnregisterEvent("ADDON_LOADED")
@@ -435,7 +498,11 @@ function PM:OnAddonMsg(...)
 				if not PM.Settings.Log[t] then
 					PM.Settings.Log[t] = msg[4]
 					tinsert(PM.LogIndex, t)
-					if _G.PMEPGP:IsVisible() then PM:UpdateGUI() end
+					if _G.PMEPGP:IsVisible() then
+						PM:UpdateGUI()
+					else
+						PM:GetGuildData()
+					end
 				end
 			end
 		elseif tonumber(msg[2]) > PM.Version then
@@ -930,6 +997,66 @@ function PM:CustomPRSort(obj, rowa, rowb, sortbycol)
 	end
 end
 
+function PM:GetILvlDiff()
+	local diffA, diffB = false, false
+
+	if PM.Loot.candidates[PM.Loot.awarded].gear1 then
+		local g1ilvl = select(4, GetItemInfo(PM.Loot.candidates[PM.Loot.awarded].gear1))
+		if g1ilvl < 960 then
+			g1ilvl = 960
+		end
+		diffA = PM.Loot.ilvl - g1ilvl
+		if diffA < 0 then
+			diffA = 0
+		end
+	end
+
+	if PM.Loot.candidates[PM.Loot.awarded].gear2 then
+		local g1ilvl = select(4, GetItemInfo(PM.Loot.candidates[PM.Loot.awarded].gear2))
+		if g1ilvl < 960 then
+			g1ilvl = 960
+		end
+		diffB = PM.Loot.ilvl - g1ilvl
+		if diffB < 0 then
+			diffB = 0
+		end
+	end
+
+	return diffA, diffB
+end
+
+function PM:GetGP()
+	local gp = 0
+	local gpdetails = ""
+
+	if PM.Loot.token then
+		gp = 300
+		gpdetails = "300"
+	else
+		if PM.Loot.equipLoc == "INVTYPE_TRINKET" then
+			gp = 300
+			gpdetails = "300 + "
+		else
+			gp = 200
+			gpdetails = "200 + "
+		end
+
+		local diffA, diffB = PM:GetILvlDiff()
+		if (diffA and not diffB) or (diffA and (diffA == diffB)) then
+			gp = gp + PM.GPModifiers[diffA]
+			gpdetails = gpdetails..tostring(PM.GPModifiers[diffA])
+		elseif diffA and diffB then
+			gp = ""
+			gpdetails = gpdetails..tostring(PM.GPModifiers[diffA]).." or "..tostring(PM.GPModifiers[diffB])
+		else
+			gp = ""
+			gpdetails = gpdetails.."?"
+		end
+	end
+
+	return tostring(gp), gpdetails
+end
+
 function PM:Round(num, idp)
 	local mult = 10^(idp or 0)
 	return mfloor(num * mult + 0.5) / mult
@@ -955,7 +1082,6 @@ end
 -- API
 
 function PMEPGP_Flogging(name, value, reason)
-	if PM.GuildData == {} then PM:GetGuildData() end
 	if not PM.GuildData[name] then return end
 	if not PM.GuildData[name].Active then return end
 	if not tonumber(value) then return end

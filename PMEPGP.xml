@@ -1,13 +1,14 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/..\FrameXML\UI.xsd">
 
 	<Script file="PMEPGP.lua"/>
+	<Script file="RCL.lua"/>
 
 	<Frame name="PMEPGP" resizable="false" movable="true" hidden="true" parent="UIParent">
 		<Scripts>
 			<OnLoad>PMEPGPNamespace:OnLoad(self)</OnLoad>
 			<OnEvent>PMEPGPNamespace:OnEvent(self, event, ...)</OnEvent>
 			<OnShow>PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN); PMEPGPNamespace:UpdateGUI()</OnShow>
-			<OnHide>PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)</OnHide>
+			<OnHide>PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE); if PMEPGPNamespace.DumpFrameInternal then PMEPGPNamespace.DumpFrameInternal:Hide() end</OnHide>
 			<OnDragStart>self:StartMoving()</OnDragStart>
 			<OnDragStop>self:StopMovingOrSizing()</OnDragStop>
 		</Scripts>

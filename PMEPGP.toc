@@ -3,6 +3,7 @@
 ## Notes: EPGP implementation for Primori Morte.
 ## Version: 1.0
 ## Author: AcidWeb
+## Dependencies: RCLootCouncil
 ## SavedVariables: PMEPGPDB
 
 Embeds.xml
