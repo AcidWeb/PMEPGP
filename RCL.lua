@@ -1,5 +1,5 @@
 local _G = _G
-local PM = PMEPGPNamespace
+local _, PM = ...
 local DIA = LibStub("LibDialog-1.0")
 
 local strsplit, tostring, hooksecurefunc = _G.strsplit, _G.tostring, _G.hooksecurefunc

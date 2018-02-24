@@ -1,12 +1,12 @@
 local _G = _G
-_G.PMEPGPNamespace = {}
-local PM = PMEPGPNamespace
+local _, PM = ...
 local ST = LibStub("ScrollingTable")
 local GUI = LibStub("AceGUI-3.0")
 local COM = LibStub("AceComm-3.0")
 local SER = LibStub("AceSerializer-3.0")
 local DIA = LibStub("LibDialog-1.0")
 local DUMP = LibStub("LibTextDump-1.0")
+_G.PMEPGP = PM
 
 --GLOBALS: RAID_CLASS_COLORS, SLASH_PMEPGP1, SLASH_PMEPGP2, PMEPGP_AlertSystemTemplate, PMEPGP_Flogging
 local tonumber, tostring, pairs, type, print, date, time, unpack, select = _G.tonumber, _G.tostring, _G.pairs, _G.type, _G.print, _G.date, _G.time, _G.unpack, _G.select
@@ -124,16 +124,16 @@ function PM:OnLoad(self)
 	self:RegisterEvent("ADDON_LOADED")
 	self:RegisterEvent("GUILD_ROSTER_UPDATE")
 	self:RegisterForDrag("LeftButton")
-	tinsert(_G.UISpecialFrames, "PMEPGP")
-	_G.PMEPGP_Title:SetText("PM EPGP "..tostring(PM.Version):gsub(".", "%1."):sub(1,-2))
+	tinsert(_G.UISpecialFrames, "PMEPGPFrame")
+	_G.PMEPGPFrame_Title:SetText("PM EPGP "..tostring(PM.Version):gsub(".", "%1."):sub(1,-2))
 	_G.BINDING_HEADER_PMEPGPB = "|cFFF2E699PM|r EPGP"
 	_G.BINDING_NAME_PMEPGPOPEN = "Show main window"
 
 	_G.SlashCmdList["PMEPGP"] = function()
-		if not _G.PMEPGP:IsVisible() then
-			_G.PMEPGP:Show()
+		if not _G.PMEPGPFrame:IsVisible() then
+			_G.PMEPGPFrame:Show()
 		else
-			_G.PMEPGP:Hide()
+			_G.PMEPGPFrame:Hide()
 		end
 	end
 end
@@ -155,28 +155,28 @@ function PM:OnEvent(self, event, name)
 		GuildRoster()
 
 		PM.ModeButton = GUI:Create("Button")
-		PM.ModeButton.frame:SetParent(_G.PMEPGP)
-		PM.ModeButton.frame:SetPoint("BOTTOMRIGHT", _G.PMEPGP, "BOTTOMRIGHT", -15, 14)
+		PM.ModeButton.frame:SetParent(_G.PMEPGPFrame)
+		PM.ModeButton.frame:SetPoint("BOTTOMRIGHT", _G.PMEPGPFrame, "BOTTOMRIGHT", -15, 14)
 		PM.ModeButton:SetWidth(100)
 		PM.ModeButton:SetCallback("OnClick", function() PM:UpdateGUI(true) end)
 		PM.ModeButton.frame:Show()
 		PM.OfficerButton = GUI:Create("Button")
-		PM.OfficerButton.frame:SetParent(_G.PMEPGP)
-		PM.OfficerButton.frame:SetPoint("BOTTOMLEFT", _G.PMEPGP, "BOTTOMLEFT", 15, 14)
+		PM.OfficerButton.frame:SetParent(_G.PMEPGPFrame)
+		PM.OfficerButton.frame:SetPoint("BOTTOMLEFT", _G.PMEPGPFrame, "BOTTOMLEFT", 15, 14)
 		PM.OfficerButton:SetWidth(100)
 		PM.OfficerButton:SetCallback("OnClick", function() PM:OnClickOfficerButton() end)
 		PM.OfficerButton.frame:Show()
 		PM.ArmorDropdown = GUI:Create("Dropdown")
-		PM.ArmorDropdown.frame:SetParent(_G.PMEPGP)
-		PM.ArmorDropdown.frame:SetPoint("BOTTOM", _G.PMEPGP, "BOTTOM", 0, 14)
+		PM.ArmorDropdown.frame:SetParent(_G.PMEPGPFrame)
+		PM.ArmorDropdown.frame:SetPoint("BOTTOM", _G.PMEPGPFrame, "BOTTOM", 0, 14)
 		PM.ArmorDropdown:SetWidth(100)
 		PM.ArmorDropdown:SetList({["ALL"] = "All", ["CLOTH"] = "Cloth", ["LEATHER"] = "Leather", ["MAIL"] = "Mail", ["PLATE"] = "Plate", ["CONQUEROR"] = "Conqueror", ["PROTECTOR"] = "Protector", ["VANQUISHER"] = "Vanquisher"},
 		{"ALL", "CLOTH", "LEATHER", "MAIL", "PLATE", "CONQUEROR", "PROTECTOR", "VANQUISHER"})
 		PM.ArmorDropdown:SetValue("ALL")
 		PM.ArmorDropdown:SetCallback("OnValueChanged", PM.OnArmorValueChange)
 		PM.ArmorDropdown.frame:Show()
-		PM.ScoreBoard = ST:CreateST(PM.ScoreBoardStructure, 30, nil, nil, _G.PMEPGP)
-		PM.ScoreBoard.frame:SetPoint("TOPLEFT", _G.PMEPGP, "TOPLEFT", 17, -40)
+		PM.ScoreBoard = ST:CreateST(PM.ScoreBoardStructure, 30, nil, nil, _G.PMEPGPFrame)
+		PM.ScoreBoard.frame:SetPoint("TOPLEFT", _G.PMEPGPFrame, "TOPLEFT", 17, -40)
 		PM.AlertSystem = _G.AlertFrame:AddSimpleAlertFrameSubSystem("PMEPGP_Alert", _G.PMEPGP_AlertSystemTemplate)
 		PM.DumpFrame = DUMP:New("PM EPGP - Logs", nil, 540)
 		if PM.IsOfficer then
@@ -186,19 +186,19 @@ function PM:OnEvent(self, event, name)
 		end
 
 		if IsAddOnLoaded("ElvUI") and IsAddOnLoaded("AddOnSkins") then
-			PM.AS:SkinFrame(_G.PMEPGP)
+			PM.AS:SkinFrame(_G.PMEPGPFrame)
 			PM.AS:SkinFrame(PM.ScoreBoard.frame, nil, true)
 			PM.AS:StripTextures(_G[PM.ScoreBoard.frame:GetName()..'ScrollTrough'], true)
 			PM.AS:SkinScrollBar(_G[PM.ScoreBoard.frame:GetName()..'ScrollFrameScrollBar'])
-			PM.AS:SkinCloseButton(_G.PMEPGP_CloseButton)
+			PM.AS:SkinCloseButton(_G.PMEPGPFrame_CloseButton)
 			PM.ArmorDropdown.frame:ClearAllPoints()
 			PM.ModeButton.frame:ClearAllPoints()
 			PM.OfficerButton.frame:ClearAllPoints()
-			PM.ArmorDropdown.frame:SetPoint("BOTTOM", _G.PMEPGP, "BOTTOM", 0, 8)
-			PM.ModeButton.frame:SetPoint("BOTTOMRIGHT", _G.PMEPGP, "BOTTOMRIGHT", -15, 10)
-			PM.OfficerButton.frame:SetPoint("BOTTOMLEFT", _G.PMEPGP, "BOTTOMLEFT", 15, 10)
-			_G.PMEPGP_Title:ClearAllPoints()
-			_G.PMEPGP_Title:SetPoint("BOTTOM", _G.PMEPGP, "TOP", 0, -20)
+			PM.ArmorDropdown.frame:SetPoint("BOTTOM", _G.PMEPGPFrame, "BOTTOM", 0, 8)
+			PM.ModeButton.frame:SetPoint("BOTTOMRIGHT", _G.PMEPGPFrame, "BOTTOMRIGHT", -15, 10)
+			PM.OfficerButton.frame:SetPoint("BOTTOMLEFT", _G.PMEPGPFrame, "BOTTOMLEFT", 15, 10)
+			_G.PMEPGPFrame_Title:ClearAllPoints()
+			_G.PMEPGPFrame_Title:SetPoint("BOTTOM", _G.PMEPGPFrame, "TOP", 0, -20)
 		end
 
 		PM.ScoreBoard:RegisterEvents({
@@ -231,8 +231,10 @@ function PM:OnEvent(self, event, name)
 					PM.AS:SkinButton(self.buttons[2])
 					PM.AS:SkinCheckBox(self.checkboxes[1])
 					PM.AS:SkinCheckBox(self.checkboxes[2])
-					PM.AS:SkinFrame(self.editboxes[1])
-					PM.AS:SkinFrame(self.editboxes[2])
+					self.editboxes[1].isSkinned = nil
+					self.editboxes[2].isSkinned = nil
+					--PM.AS:SkinEditBox(self.editboxes[1], nil, 26)
+					--PM.AS:SkinEditBox(self.editboxes[2], nil, 26)
 				end
 			end,
 			buttons = {
@@ -312,8 +314,8 @@ function PM:OnEvent(self, event, name)
 					PM.AS:SkinButton(self.buttons[2])
 					PM.AS:SkinCheckBox(self.checkboxes[1])
 					PM.AS:SkinCheckBox(self.checkboxes[2])
-					PM.AS:SkinFrame(self.editboxes[1])
-					PM.AS:SkinFrame(self.editboxes[2])
+					--PM.AS:SkinEditBox(self.editboxes[1], nil, 26)
+					--PM.AS:SkinEditBox(self.editboxes[2], nil, 26)
 				end
 			end,
 			buttons = {
@@ -415,7 +417,7 @@ function PM:OnEvent(self, event, name)
 					PM.AS:SkinCloseButton(self.close_button)
 					PM.AS:SkinButton(self.buttons[1])
 					PM.AS:SkinButton(self.buttons[2])
-					PM.AS:SkinFrame(self.editboxes[1])
+					--PM.AS:SkinEditBox(self.editboxes[1], nil, 26)
 				end
 			end,
 			buttons = {
@@ -498,7 +500,7 @@ function PM:OnAddonMsg(...)
 				if not PM.Settings.Log[t] then
 					PM.Settings.Log[t] = msg[4]
 					tinsert(PM.LogIndex, t)
-					if _G.PMEPGP:IsVisible() then
+					if _G.PMEPGPFrame:IsVisible() then
 						PM:UpdateGUI()
 					else
 						PM:GetGuildData()
@@ -687,7 +689,7 @@ function PM:ShowLogs()
 
 	PM.DumpFrameInternal = DUMP.frames[PM.DumpFrame]
 	PM.DumpFrameInternal:ClearAllPoints()
-	PM.DumpFrameInternal:SetPoint("LEFT", _G.PMEPGP, "RIGHT", 10, 0)
+	PM.DumpFrameInternal:SetPoint("LEFT", _G.PMEPGPFrame, "RIGHT", 10, 0)
 	PM.DumpFrameInternal.edit_box:Disable()
 	PM.DumpFrameInternal.edit_box:SetHyperlinksEnabled(true)
 	PM.DumpFrameInternal.edit_box:SetScript("OnHyperlinkEnter", PM.OnHyperLinkEnter)
@@ -812,7 +814,7 @@ function PM:EditPoints(members, mode, value, reason, rewardedid)
 		PM:SaveToLog(rewarded, mode, value, reason, PM.PlayerName)
 		return rewardedid
 	end
-	if _G.PMEPGP:IsVisible() then PM:UpdateGUI() end
+	if _G.PMEPGPFrame:IsVisible() then PM:UpdateGUI() end
 end
 
 function PM:EditMassPoints(value, reason, fillreserve, awardreserve)
@@ -838,7 +840,7 @@ function PM:EditMassPoints(value, reason, fillreserve, awardreserve)
 		PM.Reserve = {}
 	end
 
-	if _G.PMEPGP:IsVisible() then PM:UpdateGUI() end
+	if _G.PMEPGPFrame:IsVisible() then PM:UpdateGUI() end
 end
 
 function PM:EditPointsDecay()
@@ -867,7 +869,7 @@ function PM:EditPointsDecay()
 
 	PM:SaveToLog({}, "DECAY", PM.Config.Decay, "", PM.PlayerName)
 
-	if _G.PMEPGP:IsVisible() then PM:UpdateGUI() end
+	if _G.PMEPGPFrame:IsVisible() then PM:UpdateGUI() end
 end
 
 function PM:AddToReserve(name)

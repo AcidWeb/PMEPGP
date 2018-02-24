@@ -1,6 +1,6 @@
 ﻿# PM EPGP
 
-[Curse]()
+[Curse](https://wow.curseforge.com/projects/pm-epgp)
 
 ## COPYRIGHT
 

@@ -3,12 +3,12 @@
 	<Script file="PMEPGP.lua"/>
 	<Script file="RCL.lua"/>
 
-	<Frame name="PMEPGP" resizable="false" movable="true" hidden="true" parent="UIParent">
+	<Frame name="PMEPGPFrame" resizable="false" movable="true" hidden="true" parent="UIParent">
 		<Scripts>
-			<OnLoad>PMEPGPNamespace:OnLoad(self)</OnLoad>
-			<OnEvent>PMEPGPNamespace:OnEvent(self, event, ...)</OnEvent>
-			<OnShow>PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN); PMEPGPNamespace:UpdateGUI()</OnShow>
-			<OnHide>PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE); if PMEPGPNamespace.DumpFrameInternal then PMEPGPNamespace.DumpFrameInternal:Hide() end</OnHide>
+			<OnLoad>PMEPGP:OnLoad(self)</OnLoad>
+			<OnEvent>PMEPGP:OnEvent(self, event, ...)</OnEvent>
+			<OnShow>PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN); PMEPGP:UpdateGUI()</OnShow>
+			<OnHide>PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE); if PMEPGP.DumpFrameInternal then PMEPGP.DumpFrameInternal:Hide() end</OnHide>
 			<OnDragStart>self:StartMoving()</OnDragStart>
 			<OnDragStop>self:StopMovingOrSizing()</OnDragStop>
 		</Scripts>
