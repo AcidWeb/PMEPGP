@@ -8,8 +8,8 @@ local DIA = LibStub("LibDialog-1.0")
 local DUMP = LibStub("LibTextDump-1.0")
 _G.PMEPGP = PM
 
---GLOBALS: RAID_CLASS_COLORS, SLASH_PMEPGP1, SLASH_PMEPGP2, PMEPGP_AlertSystemTemplate, PMEPGP_Flogging
-local tonumber, tostring, pairs, type, print, date, time, unpack, select = _G.tonumber, _G.tostring, _G.pairs, _G.type, _G.print, _G.date, _G.time, _G.unpack, _G.select
+--GLOBALS: RAID_CLASS_COLORS, SLASH_PMEPGP1, SLASH_PMEPGP2, SLASH_PMEPGP3, PMEPGP_AlertSystemTemplate, PMEPGP_Flogging
+local tonumber, tostring, pairs, type, print, date, time, unpack, select, wipe = _G.tonumber, _G.tostring, _G.pairs, _G.type, _G.print, _G.date, _G.time, _G.unpack, _G.select, _G.wipe
 local tinsert, tconcat, tsort = _G.table.insert, _G.table.concat, _G.table.sort
 local strsplit, strmatch = _G.string.split, _G.string.match
 local mfloor = _G.math.floor
@@ -33,12 +33,13 @@ local UnitName = _G.UnitName
 local UnitInRaid = _G.UnitInRaid
 local PlaySound = _G.PlaySound
 
-PM.Version = 100
+PM.Version = 101
 PM.GuildData = {}
 PM.TableData = {}
 PM.TableIndex = {}
 PM.LogIndex = {}
 PM.Reserve = {}
+PM.AltCache = {}
 PM.Config = {["BaseGP"] = 1, ["Decay"] = 0, ["MinEP"] = 0, ["EAM"] = 100}
 PM.DefaultSettings = {["Log"] = {}, ["Backup"] = {}}
 PM.SBFilter = "ALL"
@@ -46,9 +47,11 @@ PM.ClickedPlayer = ""
 PM.DialogSwitch = "EP"
 PM.IsInRaid = false
 PM.IsOfficer = false
+PM.Configured = false
 PM.PlayerName = UnitName("player")
 SLASH_PMEPGP1 = "/pmepgp"
 SLASH_PMEPGP2 = "/ep"
+SLASH_PMEPGP3 = "/pm"
 
 PM.OfficerDropDown = {
 	{ text = "Mass EP", notCheckable = true, func = function() DIA:Spawn("PMEPGPMassEdit"); _G.L_CloseDropDownMenus() end },
@@ -146,8 +149,6 @@ function PM:OnEvent(self, event, name)
 	if event == "ADDON_LOADED" and name == "PMEPGP" then
 		if not _G.PMEPGPDB then _G.PMEPGPDB = PM.DefaultSettings end
 		PM.Settings = _G.PMEPGPDB
-		PM.IsOfficer = PM.Settings.Debug or CanEditOfficerNote()
-		PM.AS = unpack(_G.AddOnSkins)
 		for key, value in pairs(PM.DefaultSettings) do
 			if PM.Settings[key] == nil then
 				PM.Settings[key] = value
@@ -156,7 +157,9 @@ function PM:OnEvent(self, event, name)
 		for t, _ in pairs(PM.Settings.Log) do
 			tinsert(PM.LogIndex, t)
 		end
-		GuildRoster()
+		if _G.AddOnSkins then
+			PM.AS = unpack(_G.AddOnSkins)
+		end
 
 		PM.ModeButton = GUI:Create("Button")
 		PM.ModeButton.frame:SetParent(_G.PMEPGPFrame)
@@ -183,11 +186,6 @@ function PM:OnEvent(self, event, name)
 		PM.ScoreBoard.frame:SetPoint("TOPLEFT", _G.PMEPGPFrame, "TOPLEFT", 17, -40)
 		PM.AlertSystem = _G.AlertFrame:AddSimpleAlertFrameSubSystem("PMEPGP_Alert", _G.PMEPGP_AlertSystemTemplate)
 		PM.DumpFrame = DUMP:New("PM EPGP - Logs", nil, 540)
-		if PM.IsOfficer then
-			PM.OfficerButton:SetText("Officer tools")
-		else
-			PM.OfficerButton:SetText("Logs")
-		end
 
 		if IsAddOnLoaded("ElvUI") and IsAddOnLoaded("AddOnSkins") then
 			PM.AS:SkinFrame(_G.PMEPGPFrame)
@@ -208,9 +206,14 @@ function PM:OnEvent(self, event, name)
 		PM.ScoreBoard:RegisterEvents({
 			["OnClick"] = function (_, _, data, _, _, realRow, _, _, button, _)
 				if PM.IsOfficer and (button == "LeftButton" or button == "RightButton") and realRow ~= nil then
-					PM.ClickedPlayer = data[realRow][5]
-					_G.L_CloseDropDownMenus()
-					_G.L_EasyMenu(PM.PlayerDropDown, _G.PMEPGP_DropDown, "cursor", 0 , 0, "MENU")
+					if PM.ClickedPlayer == data[realRow][5] then
+						PM.ClickedPlayer = ""
+						_G.L_CloseDropDownMenus()
+					else
+						PM.ClickedPlayer = data[realRow][5]
+						_G.L_CloseDropDownMenus()
+						_G.L_EasyMenu(PM.PlayerDropDown, _G.PMEPGP_DropDown, "cursor", 0 , 0, "MENU")
+					end
 				end
 			end,
 		})
@@ -221,6 +224,9 @@ function PM:OnEvent(self, event, name)
 			height = 175,
 			hide_on_escape = true,
 			is_exclusive = true,
+			on_hide = function(self)
+				self.text:SetTextColor(1, 1, 1, 1)
+			end,
 			on_show = function(self)
 				local classcolor = RAID_CLASS_COLORS[PM.GuildData[self.data].Class]
 				self.text:SetText(self.data)
@@ -235,8 +241,6 @@ function PM:OnEvent(self, event, name)
 					PM.AS:SkinButton(self.buttons[2])
 					PM.AS:SkinCheckBox(self.checkboxes[1])
 					PM.AS:SkinCheckBox(self.checkboxes[2])
-					self.editboxes[1].isSkinned = nil
-					self.editboxes[2].isSkinned = nil
 					--PM.AS:SkinEditBox(self.editboxes[1], nil, 26)
 					--PM.AS:SkinEditBox(self.editboxes[2], nil, 26)
 				end
@@ -302,12 +306,11 @@ function PM:OnEvent(self, event, name)
 		DIA:Register("PMEPGPMassEdit", {
 			static_size = true,
 			width = 300,
-			height = 225,
+			height = 240,
 			hide_on_escape = true,
 			is_exclusive = true,
 			text = "All players currently displayed in main window will be affected with this operation.",
 			on_show = function(self)
-				self.text:SetTextColor(1, 1, 1, 1)
 				self.editboxes[1]:SetText(GetZoneText())
 				self.checkboxes[1]:SetChecked(false)
 				self.checkboxes[2]:SetChecked(false)
@@ -379,13 +382,12 @@ function PM:OnEvent(self, event, name)
 		DIA:Register("PMEPGPDecayWarning", {
 			static_size = true,
 			width = 300,
-			height = 75,
+			height = 90,
 			hide_on_escape = true,
 			is_exclusive = true,
 			no_close_button = true,
 			on_show = function(self)
 				self.text:SetText("Are you sure you want to execute "..tostring(PM.Config.Decay).."% decay?")
-				self.text:SetTextColor(1, 1, 1, 1)
 				if IsAddOnLoaded("ElvUI") and IsAddOnLoaded("AddOnSkins") then
 					PM.AS:SkinFrame(self)
 					PM.AS:SkinButton(self.buttons[1])
@@ -413,7 +415,6 @@ function PM:OnEvent(self, event, name)
 			text = "",
 			on_show = function(self)
 				local gp, gpdetails = PM:GetGP()
-				self.text:SetTextColor(1, 1, 1, 1)
 				self.text:SetText("Proposed GP cost: "..gpdetails)
 				self.editboxes[1]:SetText(gp)
 				if IsAddOnLoaded("ElvUI") and IsAddOnLoaded("AddOnSkins") then
@@ -432,7 +433,6 @@ function PM:OnEvent(self, event, name)
 						if value then
 							local name = strsplit("-", PM.Loot.awarded)
 							PM:EditPoints(name, "GP", value, PM.Loot.link)
-							PM:GetGuildData()
 							return false
 						else
 							print("|cFFF2E699[PM EPGP]|r The value must be a number!")
@@ -457,35 +457,60 @@ function PM:OnEvent(self, event, name)
 			},
 		})
 
-		PM:GetGuildData()
+		GuildRoster()
 		PM:RCLHook()
 		COM:RegisterComm("PMEPGP", PM.OnAddonMsg)
 		COM:SendCommMessage("PMEPGP", SER:Serialize("V;"..PM.Version), "GUILD", nil, "NORMAL")
 		self:UnregisterEvent("ADDON_LOADED")
 	elseif event == "GUILD_ROSTER_UPDATE" then
-		local guildinfo = {strsplit("\n", GetGuildInfoText())}
-		local block = false
+		if not PM.IsOfficer then
+			PM.IsOfficer = PM.Settings.Debug or CanEditOfficerNote()
+			if PM.IsOfficer then
+				PM.OfficerButton:SetText("Tools")
+			else
+				PM.OfficerButton:SetText("Logs")
+			end
+			GuildRoster()
+		end
 
-		if #guildinfo > 0 then
-			for _, line in pairs(guildinfo) do
-				if line == "-EPGP-" then
-					block = not block
-				elseif block then
-					line = {strsplit(":", line)}
-					line[2] = tonumber(line[2])
-					if line[2] then
-						if line[1] == "@BASE_GP" then
-							PM.Config.BaseGP = line[2]
-						elseif line[1] == "@DECAY_P" then
-							PM.Config.Decay = line[2]
-						elseif line[1] == "@MIN_EP" then
-							PM.Config.MinEP = line[2]
-						elseif line[1] == "@EXTRAS_P" then
-							PM.Config.EAM = line[2]
+		if not PM.Configured then
+			local guildinfo = {strsplit("\n", GetGuildInfoText())}
+			local block = false
+			if #guildinfo > 1 then
+				for _, line in pairs(guildinfo) do
+					if line == "-EPGP-" then
+						block = not block
+					elseif block then
+						line = {strsplit(":", line)}
+						line[2] = tonumber(line[2])
+						if line[2] then
+							if line[1] == "@BASE_GP" then
+								PM.Config.BaseGP = line[2]
+							elseif line[1] == "@DECAY_P" then
+								PM.Config.Decay = line[2]
+							elseif line[1] == "@MIN_EP" then
+								PM.Config.MinEP = line[2]
+							elseif line[1] == "@EXTRAS_P" then
+								PM.Config.EAM = line[2]
+							end
 						end
 					end
 				end
+				PM.Configured = true
 			end
+		end
+
+		if _G.PMEPGPFrame:IsVisible() then
+			PM:UpdateGUI()
+		else
+			PM:GetGuildData()
+		end
+		if not PM.GuildData[PM.PlayerName] then
+			GuildRoster()
+		end
+
+		if PM.RCLVF.frame and PM.RCLVF.frame:IsVisible() then
+			PM.RCLVF.frame.st:Refresh()
 		end
 	end
 end
@@ -504,11 +529,7 @@ function PM:OnAddonMsg(...)
 				if not PM.Settings.Log[t] then
 					PM.Settings.Log[t] = msg[4]
 					tinsert(PM.LogIndex, t)
-					if _G.PMEPGPFrame:IsVisible() then
-						PM:UpdateGUI()
-					else
-						PM:GetGuildData()
-					end
+					GuildRoster()
 				end
 			end
 		elseif tonumber(msg[2]) > PM.Version then
@@ -518,9 +539,13 @@ function PM:OnAddonMsg(...)
 end
 
 function PM:OnClickOfficerButton()
-	_G.L_CloseDropDownMenus()
 	if PM.IsOfficer then
-		_G.L_EasyMenu(PM.OfficerDropDown, _G.PMEPGP_DropDown, "cursor", 0 , 0, "MENU")
+		if not _G.L_DropDownList1:IsVisible() then
+			_G.L_CloseDropDownMenus()
+			_G.L_EasyMenu(PM.OfficerDropDown, _G.PMEPGP_DropDown, "cursor", 0 , 0, "MENU")
+		else
+			_G.L_CloseDropDownMenus()
+		end
 	else
 		PM:ShowLogs()
 	end
@@ -573,7 +598,7 @@ end
 function PM:GetGuildData()
 	if not CanViewOfficerNote() then return end
 
-	local altcache = {}
+	wipe(PM.AltCache)
 	for n, _ in pairs(PM.GuildData) do
 		PM.GuildData[n].Active = false
 	end
@@ -587,7 +612,7 @@ function PM:GetGuildData()
 				local entry = PM.GuildData[name]
 				entry.EP = tonumber(ep)
 				entry.GP = tonumber(gp)
-				entry.Alts = {}
+				wipe(entry.Alts)
 				entry.ID = i
 				entry.Online = online
 				entry.Active = true
@@ -595,18 +620,18 @@ function PM:GetGuildData()
 				PM.GuildData[name] = {["Class"] = class, ["EP"] = tonumber(ep), ["GP"] = tonumber(gp), ["Alts"] = {}, ["ID"] = i, ["Online"] = online, ["Active"] = true}
 			end
 		elseif note ~= "" then
-			tinsert(altcache, {name, note, class})
+			tinsert(PM.AltCache, {name, note, class})
 		end
 	end
 
-	for i=1, #altcache do
-		if PM.GuildData[altcache[i][2]] and PM.GuildData[altcache[i][2]].Active then
-			tinsert(PM.GuildData[altcache[i][2]].Alts, altcache[i][1])
-			if PM.GuildData[altcache[i][1]] then
-				PM.GuildData[altcache[i][1]].Main = altcache[i][2]
-				PM.GuildData[altcache[i][1]].Active = true
+	for i=1, #PM.AltCache do
+		if PM.GuildData[PM.AltCache[i][2]] and PM.GuildData[PM.AltCache[i][2]].Active then
+			tinsert(PM.GuildData[PM.AltCache[i][2]].Alts, PM.AltCache[i][1])
+			if PM.GuildData[PM.AltCache[i][1]] then
+				PM.GuildData[PM.AltCache[i][1]].Main = PM.AltCache[i][2]
+				PM.GuildData[PM.AltCache[i][1]].Active = true
 			else
-				PM.GuildData[altcache[i][1]] = {["Class"] = altcache[i][3], ["Main"] = altcache[i][2], ["Active"] = true}
+				PM.GuildData[PM.AltCache[i][1]] = {["Class"] = PM.AltCache[i][3], ["Main"] = PM.AltCache[i][2], ["Active"] = true}
 			end
 		end
 	end
@@ -821,9 +846,9 @@ function PM:EditPoints(members, mode, value, reason, rewardedid)
 
 	if success or #rewarded > 1 then
 		PM:SaveToLog(rewarded, mode, value, reason, PM.PlayerName)
+		GuildRoster()
 		return rewardedid
 	end
-	if _G.PMEPGPFrame:IsVisible() then PM:UpdateGUI() end
 end
 
 function PM:EditMassPoints(value, reason, fillreserve, awardreserve)
@@ -848,8 +873,6 @@ function PM:EditMassPoints(value, reason, fillreserve, awardreserve)
 		TAfter(1, function() PM:EditPoints(reserve, "EP", PM:Round(value * (PM.Config.EAM / 100), 0), reason, rewardedid) end)
 		PM.Reserve = {}
 	end
-
-	if _G.PMEPGPFrame:IsVisible() then PM:UpdateGUI() end
 end
 
 function PM:EditPointsDecay()
@@ -878,7 +901,7 @@ function PM:EditPointsDecay()
 
 	PM:SaveToLog({}, "DECAY", PM.Config.Decay, "", PM.PlayerName)
 
-	if _G.PMEPGPFrame:IsVisible() then PM:UpdateGUI() end
+	GuildRoster()
 end
 
 function PM:AddToReserve(name)

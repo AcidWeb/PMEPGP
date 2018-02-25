@@ -86,8 +86,8 @@ function PM:RCLHook()
   PM.RCL = _G.LibStub("AceAddon-3.0"):GetAddon("RCLootCouncil")
   hooksecurefunc(PM.RCL:GetModule("RCLootCouncilML"), "Award", PM.RCLGetLootData)
 
-  local voteframe = PM.RCL:GetModule("RCVotingFrame")
+  PM.RCLVF = PM.RCL:GetModule("RCVotingFrame")
   local pr = {name = "PR", DoCellUpdate = PM.SetCellPR, colName = "pr", width = 50, align = "CENTER", comparesort = PM.SortPR, defaultsort = "dsc"}
-  tinsert(voteframe.scrollCols, pr)
-  voteframe:GetFrame().UpdateSt()
+  tinsert(PM.RCLVF.scrollCols, pr)
+  PM.RCLVF:GetFrame().UpdateSt()
 end
