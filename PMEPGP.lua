@@ -29,6 +29,7 @@ local GuildRoster = _G.GuildRoster
 local SendChatMessage = _G.SendChatMessage
 local IsInRaid = _G.IsInRaid
 local IsAddOnLoaded = _G.IsAddOnLoaded
+local IsShiftKeyDown = _G.IsShiftKeyDown
 local UnitName = _G.UnitName
 local UnitInRaid = _G.UnitInRaid
 local PlaySound = _G.PlaySound
@@ -41,7 +42,7 @@ PM.LogIndex = {}
 PM.Reserve = {}
 PM.AltCache = {}
 PM.Config = {["BaseGP"] = 1, ["Decay"] = 0, ["MinEP"] = 0, ["EAM"] = 100}
-PM.DefaultSettings = {["Log"] = {}, ["Backup"] = {}}
+PM.DefaultSettings = {["Log"] = {}, ["Backup"] = {}, ["CustomFilter"] = {}}
 PM.SBFilter = "ALL"
 PM.ClickedPlayer = ""
 PM.DialogSwitch = "EP"
@@ -63,7 +64,7 @@ PM.OfficerDropDown = {
 }
 PM.PlayerDropDown = {
 	{ text = "Edit points", notCheckable = true, func = function() DIA:Spawn("PMEPGPPlayerEdit", PM.ClickedPlayer); _G.L_CloseDropDownMenus() end },
-	{ text = "Toggle reserve status", notCheckable = true, func = function() PM:AddToReserve(PM.ClickedPlayer); _G.L_CloseDropDownMenus() end },
+	{ text = "Toggle reserve status", notCheckable = true, func = function() PM:AddToCustomField(PM.ClickedPlayer, PM.Reserve, "reserve"); _G.L_CloseDropDownMenus() end },
 	{ text = "Slap", notCheckable = true, func = function() PM:EditPoints(PM.ClickedPlayer, "EP", -50, "*slap*"); _G.L_CloseDropDownMenus() end },
 }
 PM.Armors = {
@@ -177,8 +178,8 @@ function PM:OnEvent(self, event, name)
 		PM.ArmorDropdown.frame:SetParent(_G.PMEPGPFrame)
 		PM.ArmorDropdown.frame:SetPoint("BOTTOM", _G.PMEPGPFrame, "BOTTOM", 0, 14)
 		PM.ArmorDropdown:SetWidth(100)
-		PM.ArmorDropdown:SetList({["ALL"] = "All", ["CLOTH"] = "Cloth", ["LEATHER"] = "Leather", ["MAIL"] = "Mail", ["PLATE"] = "Plate", ["CONQUEROR"] = "Conqueror", ["PROTECTOR"] = "Protector", ["VANQUISHER"] = "Vanquisher"},
-		{"ALL", "CLOTH", "LEATHER", "MAIL", "PLATE", "CONQUEROR", "PROTECTOR", "VANQUISHER"})
+		PM.ArmorDropdown:SetList({["ALL"] = "All", ["CLOTH"] = "Cloth", ["LEATHER"] = "Leather", ["MAIL"] = "Mail", ["PLATE"] = "Plate", ["CONQUEROR"] = "Conqueror", ["PROTECTOR"] = "Protector", ["VANQUISHER"] = "Vanquisher", ["CUSTOM"] = "Custom"},
+		{"ALL", "CLOTH", "LEATHER", "MAIL", "PLATE", "CONQUEROR", "PROTECTOR", "VANQUISHER", "CUSTOM"})
 		PM.ArmorDropdown:SetValue("ALL")
 		PM.ArmorDropdown:SetCallback("OnValueChanged", PM.OnArmorValueChange)
 		PM.ArmorDropdown.frame:Show()
@@ -205,7 +206,12 @@ function PM:OnEvent(self, event, name)
 
 		PM.ScoreBoard:RegisterEvents({
 			["OnClick"] = function (_, _, data, _, _, realRow, _, _, button, _)
-				if PM.IsOfficer and (button == "LeftButton" or button == "RightButton") and realRow ~= nil then
+				if IsShiftKeyDown() and (button == "LeftButton" or button == "RightButton") and realRow ~= nil then
+					PM:AddToCustomField(data[realRow][5], PM.Settings.CustomFilter, "custom filter")
+					if PM.SBFilter == "CUSTOM" then
+						PM.ScoreBoard:SetFilter(PM.ScoreBoardFilter)
+					end
+				elseif PM.IsOfficer and (button == "LeftButton" or button == "RightButton") and realRow ~= nil then
 					if PM.ClickedPlayer == data[realRow][5] then
 						PM.ClickedPlayer = ""
 						_G.L_CloseDropDownMenus()
@@ -903,15 +909,15 @@ function PM:EditPointsDecay()
 	GuildRoster()
 end
 
-function PM:AddToReserve(name)
+function PM:AddToCustomField(name, field, description)
 	if not PM.GuildData[name] and not PM.GuildData[name].Active then return end
 
-	if PM.Reserve[name] then
-		PM.Reserve[name] = nil
-		print("|cFFF2E699[PM EPGP]|r |c"..RAID_CLASS_COLORS[PM.GuildData[name].Class].colorStr..name.."|r removed from reserve.")
+	if field[name] then
+		field[name] = nil
+		print("|cFFF2E699[PM EPGP]|r |c"..RAID_CLASS_COLORS[PM.GuildData[name].Class].colorStr..name.."|r removed from "..description..".")
 	else
-		PM.Reserve[name] = true
-		print("|cFFF2E699[PM EPGP]|r |c"..RAID_CLASS_COLORS[PM.GuildData[name].Class].colorStr..name.."|r added to reserve.")
+		field[name] = true
+		print("|cFFF2E699[PM EPGP]|r |c"..RAID_CLASS_COLORS[PM.GuildData[name].Class].colorStr..name.."|r added to "..description..".")
 	end
 end
 
@@ -919,7 +925,7 @@ function PM:FillReserve()
 	for i=1, GetNumGroupMembers() do
 		local name, _, subgroup = GetRaidRosterInfo(i)
 		if subgroup > 4 then
-			PM:AddToReserve(name)
+			PM:AddToCustomField(name, PM.Reserve, "reserve")
 		end
 	end
 end
@@ -959,6 +965,10 @@ end
 
 function PM:ScoreBoardFilter(rowdata)
 	local raidFilter = false
+
+	if PM.SBFilter == "CUSTOM" then
+		return PM.Settings.CustomFilter[rowdata[5]]
+	end
 
 	if PM.IsInRaid then
 		if UnitInRaid(rowdata[5]) then
