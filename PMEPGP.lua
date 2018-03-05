@@ -521,18 +521,17 @@ function PM:OnAddonMsg(...)
 
 	if status then
 		msg = {strsplit(";", msg)}
-		if tonumber(msg[2]) == PM.Version then
-			if msg[1] == "A" then
-				PM.AlertSystem:AddAlert({msg[3], tonumber(msg[4])})
-			elseif msg[1] == "L" and sender ~= PM.PlayerName then
-				local t = tonumber(msg[3]) + 10
-				if not PM.Settings.Log[t] then
-					PM.Settings.Log[t] = msg[4]
-					tinsert(PM.LogIndex, t)
-					GuildRoster()
-				end
+		if msg[1] == "A" then
+			PM.AlertSystem:AddAlert({msg[3], tonumber(msg[4])})
+		elseif msg[1] == "L" and sender ~= PM.PlayerName then
+			local t = tonumber(msg[3]) + 10
+			if not PM.Settings.Log[t] then
+				PM.Settings.Log[t] = msg[4]
+				tinsert(PM.LogIndex, t)
+				GuildRoster()
 			end
-		elseif tonumber(msg[2]) > PM.Version then
+		end
+		if tonumber(msg[2]) > PM.Version then
 			print("|cFFF2E699[PM EPGP]|r Addon is out-of-date!")
 		end
 	end
