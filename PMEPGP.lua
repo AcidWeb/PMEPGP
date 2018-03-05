@@ -33,7 +33,7 @@ local UnitName = _G.UnitName
 local UnitInRaid = _G.UnitInRaid
 local PlaySound = _G.PlaySound
 
-PM.Version = 101
+PM.Version = 102
 PM.GuildData = {}
 PM.TableData = {}
 PM.TableIndex = {}
@@ -1032,12 +1032,18 @@ function PM:CustomPRSort(obj, rowa, rowb, sortbycol)
 end
 
 function PM:GetILvlDiff()
-	local diffA, diffB = false, false
+	local diffA, diffABase, diffB, diffBBase = false, 0, false, 0
+	local basePrice = 200
+
+	if PM.Loot.equipLoc == "INVTYPE_TRINKET" then
+		basePrice = 300
+	end
 
 	if PM.Loot.candidates[PM.Loot.awarded].gear1 then
 		local g1ilvl = select(4, GetItemInfo(PM.Loot.candidates[PM.Loot.awarded].gear1))
 		if g1ilvl < 960 then
 			g1ilvl = 960
+			diffABase = basePrice
 		end
 		diffA = PM.Loot.ilvl - g1ilvl
 		if diffA < 0 then
@@ -1049,6 +1055,7 @@ function PM:GetILvlDiff()
 		local g1ilvl = select(4, GetItemInfo(PM.Loot.candidates[PM.Loot.awarded].gear2))
 		if g1ilvl < 960 then
 			g1ilvl = 960
+			diffBBase = basePrice
 		end
 		diffB = PM.Loot.ilvl - g1ilvl
 		if diffB < 0 then
@@ -1056,39 +1063,45 @@ function PM:GetILvlDiff()
 		end
 	end
 
-	return diffA, diffB
+	return diffA, diffABase, diffB, diffBBase
 end
 
 function PM:GetGP()
 	local gp = 0
-	local gpdetails = ""
+	local gpDetails = ""
 
 	if PM.Loot.token then
 		gp = 300
-		gpdetails = "300"
+		gpDetails = "300"
 	else
-		if PM.Loot.equipLoc == "INVTYPE_TRINKET" then
-			gp = 300
-			gpdetails = "300 + "
-		else
-			gp = 200
-			gpdetails = "200 + "
+		local gpA = 0
+		local gpB = 0
+		local gpDetailsA = ""
+		local gpDetailsB = ""
+		local diffA, diffABase, diffB, diffBBase = PM:GetILvlDiff()
+
+		if diffA then
+			gpA = diffABase + PM.GPModifiers[diffA]
+			gpDetailsA = tostring(diffABase).." + "..tostring(PM.GPModifiers[diffA])
+		end
+		if diffB then
+			gpB = diffBBase + PM.GPModifiers[diffB]
+			gpDetailsB = tostring(diffBBase).." + "..tostring(PM.GPModifiers[diffB])
 		end
 
-		local diffA, diffB = PM:GetILvlDiff()
-		if (diffA and not diffB) or (diffA and (diffA == diffB)) then
-			gp = gp + PM.GPModifiers[diffA]
-			gpdetails = gpdetails..tostring(PM.GPModifiers[diffA])
-		elseif diffA and diffB then
+		if gpA == 0 and gpB == 0 then
 			gp = ""
-			gpdetails = gpdetails..tostring(PM.GPModifiers[diffA]).." or "..tostring(PM.GPModifiers[diffB])
+			gpDetails = "?"
+		elseif gpA == gpB or (gpA > 0 and gpB == 0) then
+			gp = gpA
+			gpDetails = gpDetailsA
 		else
 			gp = ""
-			gpdetails = gpdetails.."?"
+			gpDetails = gpDetailsA.." or "..gpDetailsB
 		end
 	end
 
-	return tostring(gp), gpdetails
+	return tostring(gp), gpDetails
 end
 
 function PM:Round(num, idp)
