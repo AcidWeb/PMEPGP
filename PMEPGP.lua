@@ -34,7 +34,7 @@ local UnitName = _G.UnitName
 local UnitInRaid = _G.UnitInRaid
 local PlaySound = _G.PlaySound
 
-PM.Version = 102
+PM.Version = 110
 PM.GuildData = {}
 PM.TableData = {}
 PM.TableIndex = {}
@@ -64,6 +64,7 @@ PM.OfficerDropDown = {
 }
 PM.PlayerDropDown = {
 	{ text = "Edit points", notCheckable = true, func = function() DIA:Spawn("PMEPGPPlayerEdit", PM.ClickedPlayer); _G.L_CloseDropDownMenus() end },
+	{ text = "Show logs", notCheckable = true, func = function() PM:ShowLogs(PM.ClickedPlayer); _G.L_CloseDropDownMenus() end },
 	{ text = "Toggle reserve status", notCheckable = true, func = function() PM:AddToCustomField(PM.ClickedPlayer, PM.Reserve, "reserve"); _G.L_CloseDropDownMenus() end },
 	{ text = "Slap", notCheckable = true, func = function() PM:EditPoints(PM.ClickedPlayer, "EP", -50, "*slap*"); _G.L_CloseDropDownMenus() end },
 }
@@ -552,7 +553,11 @@ function PM:OnClickOfficerButton()
 			_G.L_CloseDropDownMenus()
 		end
 	else
-		PM:ShowLogs()
+		if IsShiftKeyDown() then
+			PM:ShowLogs(PM.PlayerName)
+		else
+			PM:ShowLogs()
+		end
 	end
 end
 
@@ -673,7 +678,7 @@ function PM:GetScoreBoardData()
 	end
 end
 
-function PM:ShowLogs()
+function PM:ShowLogs(filtername)
 	PM.DumpFrame:Clear()
 
 	tsort(PM.LogIndex, function (a, b) return a > b end)
@@ -683,6 +688,7 @@ function PM:ShowLogs()
 		local members = ""
 		local points = ""
 		local from = ""
+		local show = false
 
 		if status then
 			if PM.GuildData[payload[5]] then
@@ -700,6 +706,9 @@ function PM:ShowLogs()
 					else
 						members = members..payload[1][i]..", "
 					end
+					if filtername == payload[1][i] then
+						show = true
+					end
 				end
 				members = members:sub(1, -3)
 				if payload[2] == "GP" then
@@ -715,8 +724,10 @@ function PM:ShowLogs()
 						points = "|cFFFF0000"..payload[3].." "..payload[2].."|r"
 					end
 				end
-				PM.DumpFrame:AddLine("["..date("%H:%M %d.%m.%y", t).."] "..members.." || "..points.." || "..payload[4].." || "..from)
-				PM.DumpFrame:AddLine(" ")
+				if not filtername or show then
+					PM.DumpFrame:AddLine("["..date("%H:%M %d.%m.%y", t).."] "..members.." || "..points.." || "..payload[4].." || "..from)
+					PM.DumpFrame:AddLine(" ")
+				end
 			end
 		end
 	end
