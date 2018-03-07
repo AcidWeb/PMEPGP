@@ -24,6 +24,10 @@ function PM.SetCellPR(_, frame, data, _, _, realrow, column)
   local name = strsplit("-", data[realrow].name)
   local pr = false
 
+  if PM.GuildData[name] and PM.GuildData[name].Main then
+    name = PM.GuildData[name].Main
+  end
+
   if PM.GuildData[name] then
     pr = PM:Round(PM.GuildData[name].EP / (PM.GuildData[name].GP + PM.Config.BaseGP), 3)
   end
