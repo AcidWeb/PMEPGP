@@ -47,7 +47,7 @@ PM.SBFilter = "ALL"
 PM.ClickedPlayer = ""
 PM.DialogSwitch = "EP"
 PM.IsInRaid = false
-PM.IsOfficer = false
+PM.IsOfficer = nil
 PM.Configured = false
 PM.PlayerName = UnitName("player")
 SLASH_PMEPGP1 = "/pmepgp"
@@ -471,7 +471,7 @@ function PM:OnEvent(self, event, name)
 		COM:SendCommMessage("PMEPGP", SER:Serialize("V;"..PM.Version), "GUILD", nil, "NORMAL")
 		self:UnregisterEvent("ADDON_LOADED")
 	elseif event == "GUILD_ROSTER_UPDATE" then
-		if not PM.IsOfficer then
+		if PM.IsOfficer == nil then
 			PM.IsOfficer = PM.Settings.Debug or CanEditOfficerNote()
 			if PM.IsOfficer then
 				PM.OfficerButton:SetText("Tools")
@@ -917,7 +917,6 @@ function PM:EditPointsDecay()
 	end
 
 	PM:SaveToLog({}, "DECAY", PM.Config.Decay, "", PM.PlayerName)
-
 	GuildRoster()
 end
 
