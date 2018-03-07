@@ -34,7 +34,7 @@ local UnitName = _G.UnitName
 local UnitInRaid = _G.UnitInRaid
 local PlaySound = _G.PlaySound
 
-PM.Version = 110
+PM.Version = 111
 PM.GuildData = {}
 PM.TableData = {}
 PM.TableIndex = {}
@@ -78,6 +78,7 @@ PM.Armors = {
 	["VANQUISHER"] = {["MAGE"] = true, ["ROGUE"] = true, ["DEATHKNIGHT"] = true, ["DRUID"] = true},
 }
 PM.GPModifiers = {
+	[-1] = 0,
 	[0] = 50,
 	[5] = 50,
 	[10] = 125,
@@ -1101,10 +1102,12 @@ function PM:GetGP()
 		local diffA, diffABase, diffB, diffBBase = PM:GetILvlDiff()
 
 		if diffA then
+			if diffABase > 0 and diffA == 0 then diffA = -1 end
 			gpA = diffABase + PM.GPModifiers[diffA]
 			gpDetailsA = tostring(diffABase).." + "..tostring(PM.GPModifiers[diffA])
 		end
 		if diffB then
+			if diffBBase > 0 and diffB == 0 then diffB = -1 end
 			gpB = diffBBase + PM.GPModifiers[diffB]
 			gpDetailsB = tostring(diffBBase).." + "..tostring(PM.GPModifiers[diffB])
 		end
