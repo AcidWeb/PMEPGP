@@ -127,18 +127,6 @@ PM.ScoreBoardStructure = {
 -- Event functions
 
 function PM:OnLoad(self)
-	if IsAddOnLoaded("RCLootCouncil_EPGP") or IsAddOnLoaded("epgp_lootmaster") or IsAddOnLoaded("epgp") then
-		PM.Unsupported = true
-		return
-	end
-	self:RegisterEvent("ADDON_LOADED")
-	self:RegisterEvent("GUILD_ROSTER_UPDATE")
-	self:RegisterForDrag("LeftButton")
-	tinsert(_G.UISpecialFrames, "PMEPGPFrame")
-	_G.PMEPGPFrame_Title:SetText("PM EPGP "..tostring(PM.Version):gsub(".", "%1."):sub(1,-2))
-	_G.BINDING_HEADER_PMEPGPB = "|cFFF2E699PM|r EPGP"
-	_G.BINDING_NAME_PMEPGPOPEN = "Show main window"
-
 	_G.SlashCmdList["PMEPGP"] = function()
 		if not _G.PMEPGPFrame:IsVisible() then
 			_G.PMEPGPFrame:Show()
@@ -146,6 +134,19 @@ function PM:OnLoad(self)
 			_G.PMEPGPFrame:Hide()
 		end
 	end
+
+	if IsAddOnLoaded("RCLootCouncil_EPGP") or IsAddOnLoaded("epgp_lootmaster") or IsAddOnLoaded("epgp") then
+		PM.Unsupported = true
+		return
+	end
+
+	self:RegisterEvent("ADDON_LOADED")
+	self:RegisterEvent("GUILD_ROSTER_UPDATE")
+	self:RegisterForDrag("LeftButton")
+	tinsert(_G.UISpecialFrames, "PMEPGPFrame")
+	_G.PMEPGPFrame_Title:SetText("PM EPGP "..tostring(PM.Version):gsub(".", "%1."):sub(1,-2))
+	_G.BINDING_HEADER_PMEPGPB = "|cFFF2E699PM|r EPGP"
+	_G.BINDING_NAME_PMEPGPOPEN = "Show main window"
 end
 
 function PM:OnEvent(self, event, name)
