@@ -6,6 +6,7 @@ local COM = LibStub("AceComm-3.0")
 local SER = LibStub("AceSerializer-3.0")
 local DIA = LibStub("LibDialog-1.0")
 local DUMP = LibStub("LibTextDump-1.0")
+local DB = LibStub("LibPMGuildStorage-1.0")
 _G.PMEPGP = PM
 
 --GLOBALS: RAID_CLASS_COLORS, SLASH_PMEPGP1, SLASH_PMEPGP2, SLASH_PMEPGP3, PMEPGP_AlertSystemTemplate, PMEPGP_Flogging
@@ -14,17 +15,14 @@ local tinsert, tconcat, tsort = _G.table.insert, _G.table.concat, _G.table.sort
 local strsplit, strmatch = _G.string.split, _G.string.match
 local mfloor = _G.math.floor
 local TAfter = _G.C_Timer.After
-local CanViewOfficerNote = _G.CanViewOfficerNote
 local CanEditOfficerNote = _G.CanEditOfficerNote
 local GetNumGuildMembers = _G.GetNumGuildMembers
 local GetNumGroupMembers = _G.GetNumGroupMembers
 local GetGuildRosterInfo = _G.GetGuildRosterInfo
-local GetGuildInfoText = _G.GetGuildInfoText
 local GetRaidRosterInfo = _G.GetRaidRosterInfo
 local GetZoneText = _G.GetZoneText
 local GetServerTime = _G.GetServerTime
 local GetItemInfo = _G.GetItemInfo
-local GuildRosterSetOfficerNote = _G.GuildRosterSetOfficerNote
 local GuildRoster = _G.GuildRoster
 local SendChatMessage = _G.SendChatMessage
 local IsInRaid = _G.IsInRaid
@@ -34,13 +32,14 @@ local UnitName = _G.UnitName
 local UnitInRaid = _G.UnitInRaid
 local PlaySound = _G.PlaySound
 
-PM.Version = 111
+PM.Version = 120
 PM.GuildData = {}
+PM.AltData = {}
+PM.AltIndex = {}
 PM.TableData = {}
 PM.TableIndex = {}
 PM.LogIndex = {}
 PM.Reserve = {}
-PM.AltCache = {}
 PM.Config = {["BaseGP"] = 1, ["Decay"] = 0, ["MinEP"] = 0, ["EAM"] = 100}
 PM.DefaultSettings = {["Log"] = {}, ["Backup"] = {}, ["CustomFilter"] = {}}
 PM.SBFilter = "ALL"
@@ -48,7 +47,6 @@ PM.ClickedPlayer = ""
 PM.DialogSwitch = "EP"
 PM.IsInRaid = false
 PM.IsOfficer = nil
-PM.Configured = false
 PM.PlayerName = UnitName("player")
 SLASH_PMEPGP1 = "/pmepgp"
 SLASH_PMEPGP2 = "/ep"
@@ -466,10 +464,13 @@ function PM:OnEvent(self, event, name)
 			},
 		})
 
-		GuildRoster()
 		PM:RCLHook()
 		COM:RegisterComm("PMEPGP", PM.OnAddonMsg)
 		COM:SendCommMessage("PMEPGP", SER:Serialize("V;"..PM.Version), "GUILD", nil, "NORMAL")
+		DB.RegisterCallback(self, "GuildNoteChanged", PM.OnGuildNoteChanged)
+		DB.RegisterCallback(self, "GuildNoteDeleted", PM.OnGuildNoteDeleted)
+		DB.RegisterCallback(self, "GuildInfoChanged", PM.OnGuildInfoChanged)
+		GuildRoster()
 		self:UnregisterEvent("ADDON_LOADED")
 	elseif event == "GUILD_ROSTER_UPDATE" then
 		if PM.IsOfficer ~= CanEditOfficerNote() then
@@ -479,46 +480,6 @@ function PM:OnEvent(self, event, name)
 			else
 				PM.OfficerButton:SetText("Logs")
 			end
-		end
-
-		if not PM.Configured then
-			local guildinfo = {strsplit("\n", GetGuildInfoText())}
-			local block = false
-			if #guildinfo > 1 then
-				for _, line in pairs(guildinfo) do
-					if line == "-EPGP-" then
-						block = not block
-					elseif block then
-						line = {strsplit(":", line)}
-						line[2] = tonumber(line[2])
-						if line[2] then
-							if line[1] == "@BASE_GP" then
-								PM.Config.BaseGP = line[2]
-							elseif line[1] == "@DECAY_P" then
-								PM.Config.Decay = line[2]
-							elseif line[1] == "@MIN_EP" then
-								PM.Config.MinEP = line[2]
-							elseif line[1] == "@EXTRAS_P" then
-								PM.Config.EAM = line[2]
-							end
-						end
-					end
-				end
-				PM.Configured = true
-			end
-		end
-
-		if _G.PMEPGPFrame:IsVisible() then
-			PM:UpdateGUI()
-		else
-			PM:GetGuildData()
-		end
-		if not PM.GuildData[PM.PlayerName] then
-			GuildRoster()
-		end
-
-		if PM.RCLVF.frame and PM.RCLVF.frame:IsVisible() then
-			PM.RCLVF.frame.st:Refresh()
 		end
 	end
 end
@@ -536,7 +497,6 @@ function PM:OnAddonMsg(...)
 			if not PM.Settings.Log[t] then
 				PM.Settings.Log[t] = msg[4]
 				tinsert(PM.LogIndex, t)
-				GuildRoster()
 			end
 		end
 		if tonumber(msg[2]) > PM.Version then
@@ -578,6 +538,62 @@ function PM:OnHyperLinkLeave()
 	_G.GameTooltip:Hide()
 end
 
+function PM:OnGuildNoteChanged(name, note)
+	local ep, gp = strmatch(note, "^(%d+),(%d+)$")
+	if ep then
+		if PM.AltData[name] then PM.AltData[name] = nil end
+		PM.GuildData[name] = {["Class"] = DB:GetClass(name), ["EP"] = tonumber(ep), ["GP"] = tonumber(gp)}
+	elseif note ~= "" then
+		if PM.GuildData[name] then PM.GuildData[name] = nil end
+		PM.AltData[name] = {["Class"] = DB:GetClass(name), ["Main"] = note}
+	end
+
+	if _G.PMEPGPFrame:IsVisible() then
+		PM:UpdateGUI()
+	end
+	if PM.RCLVF.frame and PM.RCLVF.frame:IsVisible() then
+		PM.RCLVF.frame.st:Refresh()
+	end
+end
+
+function PM:OnGuildNoteDeleted(name)
+	PM.GuildData[name] = nil
+	PM.AltData[name] = nil
+
+	if _G.PMEPGPFrame:IsVisible() then
+		PM:UpdateGUI()
+	end
+	if PM.RCLVF.frame and PM.RCLVF.frame:IsVisible() then
+		PM.RCLVF.frame.st:Refresh()
+	end
+end
+
+function PM:OnGuildInfoChanged(info)
+	local guildinfo = {strsplit("\n", info)}
+	local block = false
+	if #guildinfo > 1 then
+		for _, line in pairs(guildinfo) do
+			if line == "-EPGP-" then
+				block = not block
+			elseif block then
+				line = {strsplit(":", line)}
+				line[2] = tonumber(line[2])
+				if line[2] then
+					if line[1] == "@BASE_GP" then
+						PM.Config.BaseGP = line[2]
+					elseif line[1] == "@DECAY_P" then
+						PM.Config.Decay = line[2]
+					elseif line[1] == "@MIN_EP" then
+						PM.Config.MinEP = line[2]
+					elseif line[1] == "@EXTRAS_P" then
+						PM.Config.EAM = line[2]
+					end
+				end
+			end
+		end
+	end
+end
+
 -- Main functions
 
 function PM:UpdateGUI(override)
@@ -597,55 +613,12 @@ function PM:UpdateGUI(override)
 	else
 		PM.ModeButton:SetText("Guild")
 	end
-	PM:GetGuildData()
 	PM:GetScoreBoardData()
 	if #PM.ScoreBoard.data == 0 then
 		PM.ScoreBoard.cols[4].sort = "asc"
 	end
 	PM.ScoreBoard:SetData(PM.TableData, true)
 	PM.ScoreBoard:SetFilter(PM.ScoreBoardFilter)
-end
-
-function PM:GetGuildData()
-	if not CanViewOfficerNote() then return end
-
-	wipe(PM.AltCache)
-	for n, _ in pairs(PM.GuildData) do
-		PM.GuildData[n].Active = false
-	end
-
-	for i=1, GetNumGuildMembers() do
-		local name, _, _, _, _, _, _, note, online, _, class = GetGuildRosterInfo(i)
-		local ep, gp = strmatch(note, "^(%d+),(%d+)$")
-		name = strsplit("-", name)
-		if ep then
-			if PM.GuildData[name] then
-				local entry = PM.GuildData[name]
-				entry.EP = tonumber(ep)
-				entry.GP = tonumber(gp)
-				wipe(entry.Alts)
-				entry.ID = i
-				entry.Online = online
-				entry.Active = true
-			else
-				PM.GuildData[name] = {["Class"] = class, ["EP"] = tonumber(ep), ["GP"] = tonumber(gp), ["Alts"] = {}, ["ID"] = i, ["Online"] = online, ["Active"] = true}
-			end
-		elseif note ~= "" then
-			tinsert(PM.AltCache, {name, note, class})
-		end
-	end
-
-	for i=1, #PM.AltCache do
-		if PM.GuildData[PM.AltCache[i][2]] and PM.GuildData[PM.AltCache[i][2]].Active then
-			tinsert(PM.GuildData[PM.AltCache[i][2]].Alts, PM.AltCache[i][1])
-			if PM.GuildData[PM.AltCache[i][1]] then
-				PM.GuildData[PM.AltCache[i][1]].Main = PM.AltCache[i][2]
-				PM.GuildData[PM.AltCache[i][1]].Active = true
-			else
-				PM.GuildData[PM.AltCache[i][1]] = {["Class"] = PM.AltCache[i][3], ["Main"] = PM.AltCache[i][2], ["Active"] = true}
-			end
-		end
-	end
 end
 
 function PM:GetScoreBoardData()
@@ -658,23 +631,21 @@ function PM:GetScoreBoardData()
 	end
 
 	for n, d in pairs(PM.GuildData) do
-		if d.Active and not d.Main then
-			if PM.TableIndex[n] then
-				local entry = PM.TableData[PM.TableIndex[n]]
-				entry[1] = PM:GetNameScoreboard(n)
-				entry[2] = d.EP
-				entry[3] = d.GP + PM.Config.BaseGP
-				entry[4] = PM:Round(d.EP / (d.GP + PM.Config.BaseGP), 2)
-				entry[7] = true
-			else
-				tinsert(PM.TableData, {PM:GetNameScoreboard(n),
-				d.EP,
-				d.GP + PM.Config.BaseGP,
-				PM:Round(d.EP / (d.GP + PM.Config.BaseGP), 2),
-				n,
-				d.Class,
-				true})
-			end
+		if PM.TableIndex[n] then
+			local entry = PM.TableData[PM.TableIndex[n]]
+			entry[1] = PM:GetNameScoreboard(n)
+			entry[2] = d.EP
+			entry[3] = d.GP + PM.Config.BaseGP
+			entry[4] = PM:Round(d.EP / (d.GP + PM.Config.BaseGP), 2)
+			entry[7] = true
+		else
+			tinsert(PM.TableData, {PM:GetNameScoreboard(n),
+			d.EP,
+			d.GP + PM.Config.BaseGP,
+			PM:Round(d.EP / (d.GP + PM.Config.BaseGP), 2),
+			n,
+			d.Class,
+			true})
 		end
 	end
 end
@@ -692,8 +663,9 @@ function PM:ShowLogs(filtername)
 		local show = false
 
 		if status then
-			if PM.GuildData[payload[5]] then
-				from = "|c"..RAID_CLASS_COLORS[PM.GuildData[payload[5]].Class].colorStr..payload[5].."|r"
+			local name = PM:CheckName(payload[5])
+			if name then
+				from = "|c"..RAID_CLASS_COLORS[PM.GuildData[name].Class].colorStr..name.."|r"
 			else
 				from = payload[5]
 			end
@@ -702,8 +674,9 @@ function PM:ShowLogs(filtername)
 				PM.DumpFrame:AddLine(" ")
 			else
 				for i=1, #payload[1] do
-					if PM.GuildData[payload[1][i]] then
-						members = members.."|c"..RAID_CLASS_COLORS[PM.GuildData[payload[1][i]].Class].colorStr..payload[1][i].."|r, "
+					name = PM:CheckName(payload[1][i])
+					if name then
+						members = members.."|c"..RAID_CLASS_COLORS[PM.GuildData[name].Class].colorStr..name.."|r, "
 					else
 						members = members..payload[1][i]..", "
 					end
@@ -756,6 +729,26 @@ end
 
 -- Support functions
 
+function PM:CheckName(name)
+	if PM.GuildData[name] then
+		return name
+	end
+	if PM.AltData[name] and PM.GuildData[PM.AltData[name].Main] then
+		return PM.AltData[name].Main
+	end
+	return false
+end
+
+function PM:FindAlts(name)
+	wipe(PM.AltIndex)
+	for n, d in pairs(PM.AltData) do
+		if d.Main == name then
+			tinsert(PM.AltIndex, n)
+		end
+	end
+	return PM.AltIndex
+end
+
 function PM:SaveToLog(members, mode, value, reason, who)
 	if not PM.IsOfficer then return end
 
@@ -781,11 +774,11 @@ function PM:SaveToLog(members, mode, value, reason, who)
 end
 
 function PM:CheckNotes()
+	if not PM.IsOfficer then return end
+
 	local nonote = {}
 	local badnote = {}
 	local altcache = {}
-
-	if not PM.IsOfficer then return end
 
 	for i=1, GetNumGuildMembers() do
 		local name, _, _, _, _, _, _, note = GetGuildRosterInfo(i)
@@ -818,7 +811,7 @@ function PM:SetNotes()
 		local name, _, _, _, _, _, _, note = GetGuildRosterInfo(i)
 		name = strsplit("-", name)
 		if not note or note == "" then
-			GuildRosterSetOfficerNote(i, "0,0")
+			DB:SetNote(name, "0,0")
 			print(name)
 		end
 	end
@@ -826,6 +819,8 @@ end
 
 function PM:EditPoints(members, mode, value, reason, rewardedid)
 	if not PM.IsOfficer then return end
+	if not DB:IsCurrentState() then return end
+
 	local success = false
 	local rewarded = {}
 	local rewardedid = rewardedid or {}
@@ -833,37 +828,30 @@ function PM:EditPoints(members, mode, value, reason, rewardedid)
 	if type(members) ~= "table" then
 		members = {members}
 	end
-	PM:GetGuildData()
 
 	for i=1, #members do
-		if PM.GuildData[members[i]] and PM.GuildData[members[i]].Active then
-			local player = PM.GuildData[members[i]]
-			local wtarget = members[i]
-			if player.Main then
-				player = PM.GuildData[player.Main]
+		local name = PM:CheckName(members[i])
+		if name and not rewardedid[name] then
+			local player = PM.GuildData[name]
+			if mode == "EP" then
+				player.EP = player.EP + value
+			elseif mode == "GP" then
+				player.GP = player.GP + value
 			end
-			if player and player.Active and not rewardedid[player.ID] then
-				if mode == "EP" then
-					player.EP = player.EP + value
-				elseif mode == "GP" then
-					player.GP = player.GP + value
-				end
-				if player.EP < 0 then player.EP = 0 end
-				if player.GP < 0 then player.GP = 0 end
-				success = true
-				tinsert(rewarded, members[i])
-				rewardedid[player.ID] = true
-				GuildRosterSetOfficerNote(player.ID, player.EP..","..player.GP)
-				if player.Online then
-					COM:SendCommMessage("PMEPGP", SER:Serialize("A;"..PM.Version..";"..mode..";"..value), "WHISPER", wtarget, "ALERT")
-				end
+			if player.EP < 0 then player.EP = 0 end
+			if player.GP < 0 then player.GP = 0 end
+			success = true
+			tinsert(rewarded, members[i])
+			rewardedid[name] = true
+			DB:SetNote(name, player.EP..","..player.GP)
+			if DB:GetOnline(members[i]) then
+				COM:SendCommMessage("PMEPGP", SER:Serialize("A;"..PM.Version..";"..mode..";"..value), "WHISPER", members[i], "ALERT")
 			end
 		end
 	end
 
 	if success or #rewarded > 1 then
 		PM:SaveToLog(rewarded, mode, value, reason, PM.PlayerName)
-		GuildRoster()
 		return rewardedid
 	end
 end
@@ -887,41 +875,40 @@ function PM:EditMassPoints(value, reason, fillreserve, awardreserve)
 		for n, _ in pairs(PM.Reserve) do
 			tinsert(reserve, n)
 		end
-		TAfter(1, function() PM:EditPoints(reserve, "EP", PM:Round(value * (PM.Config.EAM / 100), 0), reason, rewardedid) end)
+		TAfter(2, function() PM:EditPoints(reserve, "EP", PM:Round(value * (PM.Config.EAM / 100), 0), reason, rewardedid) end)
 		PM.Reserve = {}
 	end
 end
 
 function PM:EditPointsDecay()
 	if not PM.IsOfficer then return end
+	if not DB:IsCurrentState() then return end
 
-	PM:GetGuildData()
 	local backup = {}
 	for name, data in pairs(PM.GuildData) do
-		if data.Active and not data.Main then
-			backup[name] = data.EP..","..data.GP
-		elseif data.Active and data.Main then
-			backup[name] = data.Main
-		end
+		backup[name] = data.EP..","..data.GP
+	end
+	for name, data in pairs(PM.AltData) do
+		backup[name] = data.Main
 	end
 	PM.Settings.Backup[time(date('!*t', GetServerTime()))] = SER:Serialize(backup)
 
-	for _, data in pairs(PM.GuildData) do
-		if data.Active and not data.Main and (data.EP > 0 or data.GP > 0) then
+	for name, data in pairs(PM.GuildData) do
+		if data.EP > 0 or data.GP > 0 then
 			data.EP = PM:Round(data.EP * (1 - (PM.Config.Decay / 100)), 0)
 			data.GP = PM:Round(data.GP - ((data.GP + PM.Config.BaseGP) * (1 - (PM.Config.Decay / 100))), 0)
 			if data.EP < 0 then data.EP = 0 end
 			if data.GP < 0 then data.GP = 0 end
-			GuildRosterSetOfficerNote(data.ID, data.EP..","..data.GP)
+			DB:SetNote(name, data.EP..","..data.GP)
 		end
 	end
 
 	PM:SaveToLog({}, "DECAY", PM.Config.Decay, "", PM.PlayerName)
-	GuildRoster()
 end
 
 function PM:AddToCustomField(name, field, description)
-	if not PM.GuildData[name] and not PM.GuildData[name].Active then return end
+	local name = PM:CheckName(name)
+	if not name then return end
 
 	if field[name] then
 		field[name] = nil
@@ -944,12 +931,13 @@ end
 function PM:GetNameScoreboard(name)
 	local nstr = "|c"..RAID_CLASS_COLORS[PM.GuildData[name].Class].colorStr..name.."|r"
 	local foundalt = false
+	local alts = PM:FindAlts(name)
 
-	if #PM.GuildData[name].Alts > 0 then
+	if #alts > 0 then
 		nstr = nstr.." |cFF808080(|r"
-		for i=1, #PM.GuildData[name].Alts do
-			if PM.GuildData[name].Alts[i] == PM.PlayerName then foundalt = true end
-			nstr = nstr.."|c"..RAID_CLASS_COLORS[PM.GuildData[PM.GuildData[name].Alts[i]].Class].colorStr..PM.GuildData[name].Alts[i].."|r|cFF808080,|r "
+		for i=1, #alts do
+			if alts[i] == PM.PlayerName then foundalt = true end
+			nstr = nstr.."|c"..RAID_CLASS_COLORS[PM.AltData[alts[i]].Class].colorStr..alts[i].."|r|cFF808080,|r "
 		end
 		nstr = nstr:sub(1, -15).."|cFF808080)|r"
 	end
@@ -985,8 +973,9 @@ function PM:ScoreBoardFilter(rowdata)
 		if UnitInRaid(rowdata[5]) then
 			raidFilter = true
 		else
-			for _, alt in pairs(PM.GuildData[rowdata[5]].Alts) do
-				if UnitInRaid(alt) then
+			local alts = PM:FindAlts(rowdata[5])
+			for i=1, #alts do
+				if UnitInRaid(alts[i]) then
 					raidFilter = true
 				end
 			end
@@ -1151,8 +1140,9 @@ end
 -- API
 
 function PMEPGP_Flogging(name, value, reason)
-	if not PM.GuildData[name] then return end
-	if not PM.GuildData[name].Active then return end
+	if not PM.IsOfficer then return end
+	if not DB:IsCurrentState() then return end
+	if not PM:CheckName(name) then return end
 	if not tonumber(value) then return end
 	if not reason or reason == "" then reason = "*slap*" end
 
