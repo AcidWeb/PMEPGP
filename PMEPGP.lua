@@ -471,14 +471,13 @@ function PM:OnEvent(self, event, name)
 		COM:SendCommMessage("PMEPGP", SER:Serialize("V;"..PM.Version), "GUILD", nil, "NORMAL")
 		self:UnregisterEvent("ADDON_LOADED")
 	elseif event == "GUILD_ROSTER_UPDATE" then
-		if PM.IsOfficer == nil then
-			PM.IsOfficer = PM.Settings.Debug or CanEditOfficerNote()
+		if PM.IsOfficer ~= CanEditOfficerNote() then
+			PM.IsOfficer = CanEditOfficerNote()
 			if PM.IsOfficer then
 				PM.OfficerButton:SetText("Tools")
 			else
 				PM.OfficerButton:SetText("Logs")
 			end
-			GuildRoster()
 		end
 
 		if not PM.Configured then
