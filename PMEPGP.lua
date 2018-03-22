@@ -9,7 +9,7 @@ local DUMP = LibStub("LibTextDump-1.0")
 local DB = LibStub("LibPMGuildStorage-1.0")
 _G.PMEPGP = PM
 
---GLOBALS: RAID_CLASS_COLORS, SLASH_PMEPGP1, SLASH_PMEPGP2, SLASH_PMEPGP3, PMEPGP_AlertSystemTemplate, PMEPGP_Flogging
+--GLOBALS: RAID_CLASS_COLORS, CALENDAR_INVITESTATUS_ACCEPTED, CALENDAR_INVITESTATUS_CONFIRMED, SLASH_PMEPGP1, SLASH_PMEPGP2, SLASH_PMEPGP3, PMEPGP_AlertSystemTemplate, PMEPGP_Flogging
 local tonumber, tostring, pairs, type, print, date, time, unpack, select, wipe = _G.tonumber, _G.tostring, _G.pairs, _G.type, _G.print, _G.date, _G.time, _G.unpack, _G.select, _G.wipe
 local tinsert, tconcat, tsort = _G.table.insert, _G.table.concat, _G.table.sort
 local strsplit, strmatch = _G.string.split, _G.string.match
@@ -31,6 +31,8 @@ local IsShiftKeyDown = _G.IsShiftKeyDown
 local UnitName = _G.UnitName
 local UnitInRaid = _G.UnitInRaid
 local PlaySound = _G.PlaySound
+local CalendarEventGetNumInvites = _G.CalendarEventGetNumInvites
+local CalendarEventGetInvite = _G.CalendarEventGetInvite
 
 PM.Version = 120
 PM.GuildData = {}
@@ -57,6 +59,7 @@ PM.OfficerDropDown = {
 	{ text = "Decay", notCheckable = true, func = function() DIA:Spawn("PMEPGPDecayWarning"); _G.L_CloseDropDownMenus() end },
 	{ text = "Logs", notCheckable = true, func = function() PM:ShowLogs(); _G.L_CloseDropDownMenus() end },
 	{ text = "Fill reserve", notCheckable = true, func = function() PM:FillReserve(); _G.L_CloseDropDownMenus() end },
+	{ text = "Find deserters", notCheckable = true, func = function() PM:FindDeserters(); _G.L_CloseDropDownMenus() end },
 	{ text = "Check notes", notCheckable = true, func = function() PM:CheckNotes(); _G.L_CloseDropDownMenus() end },
 	{ text = "Setup notes", notCheckable = true, func = function() PM:SetNotes(); _G.L_CloseDropDownMenus() end },
 }
@@ -931,6 +934,45 @@ function PM:FillReserve()
 			PM:AddToCustomField(name, PM.Reserve, "reserve")
 		end
 	end
+end
+
+function PM:FindDeserters()
+	if not PM.IsOfficer then return end
+	if not DB:IsCurrentState() then return end
+	if not IsInRaid() then
+		print("|cFFF2E699[PM EPGP]|r Not in raid!")
+		return
+	end
+	if not _G.CalendarViewEventFrame or not _G.CalendarViewEventFrame:IsVisible() then
+		print("|cFFF2E699[PM EPGP]|r Calendar event not selected!")
+		return
+	end
+
+	local deserters = {}
+	local i = 1
+	while i <= CalendarEventGetNumInvites() do
+		local name, _, _, _, inviteStatus = CalendarEventGetInvite(i)
+		name = PM:CheckName(name)
+		if name and (inviteStatus == CALENDAR_INVITESTATUS_ACCEPTED or inviteStatus == CALENDAR_INVITESTATUS_CONFIRMED) then
+			deserters[name] = true
+		end
+		i = i + 1
+	end
+	for i=1, GetNumGroupMembers() do
+		local name = GetRaidRosterInfo(i)
+		name = PM:CheckName(name)
+		deserters[name] = false
+	end
+
+	PM.Settings.CustomFilter = {}
+	for name, deserter in pairs(deserters) do
+		if deserter then
+			PM.Settings.CustomFilter[name] = true
+		end
+	end
+
+	PM.ArmorDropdown:SetValue("CUSTOM")
+	PM:OnArmorValueChange(_, "CUSTOM")
 end
 
 function PM:GetNameScoreboard(name)
