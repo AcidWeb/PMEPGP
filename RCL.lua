@@ -23,7 +23,7 @@ end
 function PM.SetCellPR(_, frame, data, _, _, realrow, column)
   local name = strsplit("-", data[realrow].name)
   local pr
-  name = PM:CheckName(name)
+  name = PM:GetMainName(name)
 
   if name then
     pr = PM:Round(PM.GuildData[name].EP / (PM.GuildData[name].GP + PM.Config.BaseGP), 3)
@@ -53,14 +53,14 @@ function PM.SortPR(table, rowa, rowb, sortbycol)
   local rowBEP = false
   if rowA ~= -1 then
     local nameA = strsplit("-", a.name)
-    nameA = PM:CheckName(nameA)
+    nameA = PM:GetMainName(nameA)
     if nameA then
       rowAEP = PM.GuildData[nameA].EP >= PM.Config.MinEP
     end
   end
   if rowB ~= -1 then
     local nameB = strsplit("-", b.name)
-    nameB = PM:CheckName(nameB)
+    nameB = PM:GetMainName(nameB)
     if nameB then
       rowBEP = PM.GuildData[nameB].EP >= PM.Config.MinEP
     end

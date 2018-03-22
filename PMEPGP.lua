@@ -671,7 +671,7 @@ function PM:ShowLogs(filtername)
 		local show = false
 
 		if status then
-			local name = PM:CheckName(payload[5])
+			local name = PM:GetMainName(payload[5])
 			if name then
 				from = "|c"..RAID_CLASS_COLORS[PM.GuildData[name].Class].colorStr..name.."|r"
 			else
@@ -682,7 +682,7 @@ function PM:ShowLogs(filtername)
 				PM.DumpFrame:AddLine(" ")
 			else
 				for i=1, #payload[1] do
-					name = PM:CheckName(payload[1][i])
+					name = PM:GetMainName(payload[1][i])
 					if name then
 						members = members.."|c"..RAID_CLASS_COLORS[PM.GuildData[name].Class].colorStr..name.."|r, "
 					else
@@ -737,7 +737,7 @@ end
 
 -- Support functions
 
-function PM:CheckName(name)
+function PM:GetMainName(name)
 	if PM.GuildData[name] then
 		return name
 	end
@@ -838,7 +838,7 @@ function PM:EditPoints(members, mode, value, reason, rewardedid)
 	end
 
 	for i=1, #members do
-		local name = PM:CheckName(members[i])
+		local name = PM:GetMainName(members[i])
 		if name and not rewardedid[name] then
 			local player = PM.GuildData[name]
 			if mode == "EP" then
@@ -915,7 +915,7 @@ function PM:EditPointsDecay()
 end
 
 function PM:AddToCustomField(name, field, description)
-	local name = PM:CheckName(name)
+	local name = PM:GetMainName(name)
 	if not name then return end
 
 	if field[name] then
@@ -952,7 +952,7 @@ function PM:FindDeserters()
 	local i = 1
 	while i <= CalendarEventGetNumInvites() do
 		local name, _, _, _, inviteStatus = CalendarEventGetInvite(i)
-		name = PM:CheckName(name)
+		name = PM:GetMainName(name)
 		if name and (inviteStatus == CALENDAR_INVITESTATUS_ACCEPTED or inviteStatus == CALENDAR_INVITESTATUS_CONFIRMED) then
 			deserters[name] = true
 		end
@@ -960,7 +960,7 @@ function PM:FindDeserters()
 	end
 	for i=1, GetNumGroupMembers() do
 		local name = GetRaidRosterInfo(i)
-		name = PM:CheckName(name)
+		name = PM:GetMainName(name)
 		deserters[name] = false
 	end
 
@@ -1189,7 +1189,7 @@ end
 function PMEPGP_Flogging(name, value, reason)
 	if not PM.IsOfficer then return end
 	if not DB:IsCurrentState() then return end
-	if not PM:CheckName(name) then return end
+	if not PM:GetMainName(name) then return end
 	if not tonumber(value) then return end
 	if not reason or reason == "" then reason = "*slap*" end
 
