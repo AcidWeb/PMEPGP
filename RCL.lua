@@ -2,7 +2,7 @@ local _G = _G
 local _, PM = ...
 local DIA = LibStub("LibDialog-1.0")
 
-local strsplit, tostring, hooksecurefunc = _G.strsplit, _G.tostring, _G.hooksecurefunc
+local strsplit, tostring, tonumber, hooksecurefunc = _G.strsplit, _G.tostring, _G.tonumber, _G.hooksecurefunc
 local tinsert = _G.table.insert
 local TAfter = _G.C_Timer.After
 local GetInstanceInfo = _G.GetInstanceInfo
@@ -22,7 +22,7 @@ end
 
 function PM.SetCellPR(_, frame, data, _, _, realrow, column)
   local name = strsplit("-", data[realrow].name)
-  local pr = false
+  local pr
   name = PM:CheckName(name)
 
   if name then
@@ -47,8 +47,8 @@ function PM.SortPR(table, rowa, rowb, sortbycol)
   local direction = column.sort or column.defaultsort or "asc"
   local a, b = table:GetRow(rowa), table:GetRow(rowb)
 
-  local rowA = a.cols[14].value
-  local rowB = b.cols[14].value
+  local rowA = tonumber(a.cols[14].value)
+  local rowB = tonumber(b.cols[14].value)
   local rowAEP = false
   local rowBEP = false
   if rowA ~= -1 then
