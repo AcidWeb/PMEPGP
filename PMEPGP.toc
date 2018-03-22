@@ -1,7 +1,7 @@
 ## Interface: 70300
 ## Title: |cFFF2E699PM|r EPGP
 ## Notes: EPGP implementation for Primori Morte.
-## Version: 1.2.0
+## Version: 1.2.1
 ## Author: AcidWeb
 ## Dependencies: RCLootCouncil
 ## SavedVariables: PMEPGPDB

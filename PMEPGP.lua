@@ -34,7 +34,7 @@ local PlaySound = _G.PlaySound
 local CalendarEventGetNumInvites = _G.CalendarEventGetNumInvites
 local CalendarEventGetInvite = _G.CalendarEventGetInvite
 
-PM.Version = 120
+PM.Version = 121
 PM.GuildData = {}
 PM.AltData = {}
 PM.AltIndex = {}
@@ -143,6 +143,7 @@ function PM:OnLoad(self)
 
 	self:RegisterEvent("ADDON_LOADED")
 	self:RegisterEvent("GUILD_ROSTER_UPDATE")
+	self:RegisterEvent("GROUP_ROSTER_UPDATE")
 	self:RegisterForDrag("LeftButton")
 	tinsert(_G.UISpecialFrames, "PMEPGPFrame")
 	_G.PMEPGPFrame_Title:SetText("PM EPGP "..tostring(PM.Version):gsub(".", "%1."):sub(1,-2))
@@ -165,6 +166,7 @@ function PM:OnEvent(self, event, name)
 		if _G.AddOnSkins then
 			PM.AS = unpack(_G.AddOnSkins)
 		end
+		PM.IsInRaid = IsInRaid()
 
 		PM.ModeButton = GUI:Create("Button")
 		PM.ModeButton.frame:SetParent(_G.PMEPGPFrame)
@@ -476,12 +478,21 @@ function PM:OnEvent(self, event, name)
 		GuildRoster()
 		self:UnregisterEvent("ADDON_LOADED")
 	elseif event == "GUILD_ROSTER_UPDATE" then
-		if PM.IsOfficer ~= CanEditOfficerNote() then
-			PM.IsOfficer = CanEditOfficerNote()
+		local output = CanEditOfficerNote()
+		if PM.IsOfficer ~= output then
+			PM.IsOfficer = output
 			if PM.IsOfficer then
 				PM.OfficerButton:SetText("Tools")
 			else
 				PM.OfficerButton:SetText("Logs")
+			end
+		end
+	elseif event == "GROUP_ROSTER_UPDATE" then
+		local output = IsInRaid()
+		if PM.IsInRaid ~= output then
+			PM.IsInRaid = output
+			if _G.PMEPGPFrame:IsVisible() then
+				PM:UpdateGUI()
 			end
 		end
 	end
@@ -600,26 +611,24 @@ end
 -- Main functions
 
 function PM:UpdateGUI(override)
+	_G.L_CloseDropDownMenus()
 	if PM.Unsupported then
 		print("|cFFF2E699[PM EPGP]|r Unsupported addon detected!")
 		_G.PMEPGPFrame:Hide()
 		return
 	end
-	_G.L_CloseDropDownMenus()
 	if override then
 		PM.IsInRaid = not PM.IsInRaid
-	else
-		PM.IsInRaid = IsInRaid()
 	end
 	if PM.IsInRaid then
 		PM.ModeButton:SetText("Raid")
 	else
 		PM.ModeButton:SetText("Guild")
 	end
-	PM:GetScoreBoardData()
 	if #PM.ScoreBoard.data == 0 then
 		PM.ScoreBoard.cols[4].sort = "asc"
 	end
+	PM:GetScoreBoardData()
 	PM.ScoreBoard:SetData(PM.TableData, true)
 	PM.ScoreBoard:SetFilter(PM.ScoreBoardFilter)
 end
