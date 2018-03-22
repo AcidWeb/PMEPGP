@@ -651,6 +651,11 @@ function PM:GetScoreBoardData()
 end
 
 function PM:ShowLogs(filtername)
+	if PM.DumpFrameInternal and not filtername and PM.DumpFrameInternal:IsVisible() then
+		PM.DumpFrameInternal:Hide()
+		return
+	end
+
 	PM.DumpFrame:Clear()
 
 	tsort(PM.LogIndex, function (a, b) return a > b end)
