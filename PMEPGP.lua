@@ -219,7 +219,7 @@ function PM:OnEvent(self, event, name)
 					else
 						PM.ClickedPlayer = data[realRow][5]
 						_G.L_CloseDropDownMenus()
-						_G.L_EasyMenu(PM.PlayerDropDown, _G.PMEPGP_DropDown, "cursor", 0 , 0, "MENU")
+						_G.L_EasyMenu(PM.PlayerDropDown, _G.PMEPGP_DropDown, "cursor", 2, -2, "MENU")
 					end
 				end
 			end,
