@@ -12,5 +12,6 @@
   <Include file="Libs\AceSerializer-3.0\AceSerializer-3.0.xml"/>
   <Include file="Libs\AceHook-3.0\AceHook-3.0.xml"/>
   <Include file="Libs\LibUIDropDownMenu\LibUIDropDownMenu.xml"/>
+  <Include file="Libs\LibJSON-1.0\LibJSON-1.0.xml"/>
 
 </Ui>

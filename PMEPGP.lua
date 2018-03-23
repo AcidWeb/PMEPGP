@@ -1,12 +1,13 @@
 local _G = _G
 local _, PM = ...
 local ST = LibStub("ScrollingTable")
+local DB = LibStub("LibPMGuildStorage-1.0")
 local GUI = LibStub("AceGUI-3.0")
 local COM = LibStub("AceComm-3.0")
 local SER = LibStub("AceSerializer-3.0")
 local DIA = LibStub("LibDialog-1.0")
 local DUMP = LibStub("LibTextDump-1.0")
-local DB = LibStub("LibPMGuildStorage-1.0")
+local JSON = LibStub("LibJSON-1.0")
 _G.PMEPGP = PM
 
 --GLOBALS: RAID_CLASS_COLORS, CALENDAR_INVITESTATUS_ACCEPTED, CALENDAR_INVITESTATUS_CONFIRMED, SLASH_PMEPGP1, SLASH_PMEPGP2, SLASH_PMEPGP3, PMEPGP_AlertSystemTemplate, PMEPGP_Flogging
@@ -20,6 +21,10 @@ local GetNumGuildMembers = _G.GetNumGuildMembers
 local GetNumGroupMembers = _G.GetNumGroupMembers
 local GetGuildRosterInfo = _G.GetGuildRosterInfo
 local GetRaidRosterInfo = _G.GetRaidRosterInfo
+local GetCVar = _G.GetCVar
+local GetGameTime = _G.GetGameTime
+local GetRealmName = _G.GetRealmName
+local GetGuildInfo = _G.GetGuildInfo
 local GetZoneText = _G.GetZoneText
 local GetServerTime = _G.GetServerTime
 local GetItemInfo = _G.GetItemInfo
@@ -33,8 +38,9 @@ local UnitInRaid = _G.UnitInRaid
 local PlaySound = _G.PlaySound
 local CalendarEventGetNumInvites = _G.CalendarEventGetNumInvites
 local CalendarEventGetInvite = _G.CalendarEventGetInvite
+local CalendarGetDate = _G.CalendarGetDate
 
-PM.Version = 121
+PM.Version = 130
 PM.GuildData = {}
 PM.AltData = {}
 PM.AltIndex = {}
@@ -60,6 +66,7 @@ PM.OfficerDropDown = {
 	{ text = "Logs", notCheckable = true, func = function() PM:ShowLogs(); _G.L_CloseDropDownMenus() end },
 	{ text = "Fill reserve", notCheckable = true, func = function() PM:FillReserve(); _G.L_CloseDropDownMenus() end },
 	{ text = "Find deserters", notCheckable = true, func = function() PM:FindDeserters(); _G.L_CloseDropDownMenus() end },
+	{ text = "Export logs", notCheckable = true, func = function() PM:ExportLogs(); _G.L_CloseDropDownMenus() end },
 	{ text = "Check notes", notCheckable = true, func = function() PM:CheckNotes(); _G.L_CloseDropDownMenus() end },
 	{ text = "Setup notes", notCheckable = true, func = function() PM:SetNotes(); _G.L_CloseDropDownMenus() end },
 }
@@ -507,7 +514,7 @@ function PM:OnAddonMsg(...)
 		if msg[1] == "A" then
 			PM.AlertSystem:AddAlert({msg[3], tonumber(msg[4])})
 		elseif msg[1] == "L" and sender ~= PM.PlayerName then
-			local t = tonumber(msg[3]) + 10
+			local t = tonumber(msg[3])
 			if not PM.Settings.Log[t] then
 				PM.Settings.Log[t] = msg[4]
 				tinsert(PM.LogIndex, t)
@@ -735,6 +742,67 @@ function PM:ShowLogs(filtername)
 	PM.DumpFrameInternal.edit_box:SetHyperlinksEnabled(true)
 	PM.DumpFrameInternal.edit_box:SetScript("OnHyperlinkEnter", PM.OnHyperLinkEnter)
 	PM.DumpFrameInternal.edit_box:SetScript("OnHyperlinkLeave", PM.OnHyperLinkLeave)
+
+	if IsAddOnLoaded("ElvUI") and IsAddOnLoaded("AddOnSkins") then
+		PM.AS:SkinFrame(PM.DumpFrameInternal)
+		PM.AS:SkinFrame(PM.DumpFrameInternal.Inset)
+		PM.AS:SkinCloseButton(PM.DumpFrameInternal.CloseButton)
+		PM.AS:SkinScrollBar(PM.DumpFrameInternal.scrollArea.ScrollBar)
+	end
+end
+
+function PM:ExportLogs()
+	if not PM.IsOfficer then return end
+	if not DB:IsCurrentState() then return end
+
+	local timestamp = {}
+	timestamp.month = select(2, CalendarGetDate())
+	timestamp.day = select(3, CalendarGetDate())
+	timestamp.year = select(4, CalendarGetDate())
+	timestamp.hour = select(1, GetGameTime())
+	timestamp.min = select(2, GetGameTime())
+
+	local d = {}
+	d.region = GetCVar("portal")
+	d.guild = select(1, GetGuildInfo("player"))
+	d.realm = GetRealmName()
+	d.base_gp = PM.Config.BaseGP
+	d.min_ep = PM.Config.MinEP
+	d.decay_p = PM.Config.Decay
+	d.extras_p = PM.Config.EAM
+	d.timestamp = time(timestamp)
+
+	d.roster = {}
+	for name, _ in pairs(PM.GuildData) do
+		if PM.GuildData[name].EP > 0 or PM.GuildData[name].GP > 0 then
+			tinsert(d.roster, {name, PM.GuildData[name].EP, PM.GuildData[name].GP + PM.Config.BaseGP})
+		end
+	end
+
+	d.loot = {}
+	tsort(PM.LogIndex, function (a, b) return a > b end)
+	for i=1, #PM.LogIndex do
+		local status, payload = SER:Deserialize(PM.Settings.Log[PM.LogIndex[i]])
+		local t = mfloor(PM.LogIndex[i] / 60) * 60
+		if status and payload[2] == "GP" then
+			local itemString = payload[4]:match("item[%-?%d:]+")
+			local name = PM:GetMainName(payload[1][1])
+			if itemString then
+				tinsert(d.loot, {t, name, itemString, tonumber(payload[3])})
+			end
+		end
+	end
+
+	local payload = JSON.Serialize(d):gsub("\124", "\124\124")
+	PM.DumpFrame:Clear()
+	PM.DumpFrame:AddLine(payload)
+	PM.DumpFrame:Display()
+
+	PM.DumpFrameInternal = DUMP.frames[PM.DumpFrame]
+	PM.DumpFrameInternal:ClearAllPoints()
+	PM.DumpFrameInternal:SetPoint("LEFT", _G.PMEPGPFrame, "RIGHT", 10, 0)
+	PM.DumpFrameInternal.edit_box:Enable()
+	PM.DumpFrameInternal.edit_box:SetHyperlinksEnabled(false)
 
 	if IsAddOnLoaded("ElvUI") and IsAddOnLoaded("AddOnSkins") then
 		PM.AS:SkinFrame(PM.DumpFrameInternal)
