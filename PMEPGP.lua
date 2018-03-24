@@ -547,6 +547,11 @@ function PM:OnArmorValueChange(_, armor)
 	_G.L_CloseDropDownMenus()
 	PM.SBFilter = armor
 	PM.ScoreBoard:SetFilter(PM.ScoreBoardFilter)
+	if armor == "CUSTOM" then
+		PM.ModeButton:SetDisabled(true)
+	else
+		PM.ModeButton:SetDisabled(false)
+	end
 end
 
 function PM:OnHyperLinkEnter(linkData, _)
