@@ -40,7 +40,7 @@ local CalendarEventGetNumInvites = _G.CalendarEventGetNumInvites
 local CalendarEventGetInvite = _G.CalendarEventGetInvite
 local CalendarGetDate = _G.CalendarGetDate
 
-PM.Version = 130
+PM.Version = 131
 PM.GuildData = {}
 PM.AltData = {}
 PM.AltIndex = {}
@@ -792,7 +792,7 @@ function PM:ExportLogs()
 		if status and payload[2] == "GP" then
 			local itemString = payload[4]:match("item[%-?%d:]+")
 			local name = PM:GetMainName(payload[1][1])
-			if itemString then
+			if name and itemString then
 				tinsert(d.loot, {t, name, itemString, tonumber(payload[3])})
 			end
 		end
@@ -1058,7 +1058,9 @@ function PM:FindDeserters()
 	for i=1, GetNumGroupMembers() do
 		local name = GetRaidRosterInfo(i)
 		name = PM:GetMainName(name)
-		deserters[name] = false
+		if name then
+			deserters[name] = false
+		end
 	end
 
 	PM.Settings.CustomFilter = {}
