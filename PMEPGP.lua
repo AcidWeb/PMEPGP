@@ -902,6 +902,21 @@ function PM:SetNotes()
 	end
 end
 
+function PM:WipeNotes()
+	if not PM.IsOfficer then return end
+
+	for i=1, GetNumGuildMembers() do
+		local name, _, _, _, _, _, _, note = GetGuildRosterInfo(i)
+		name = strsplit("-", name)
+		local ep, _ = strmatch(note, "^(%d+),(%d+)$")
+		if not note or note == "" or ep then
+			DB:SetNote(name, "0,0")
+		end
+	end
+
+	print("|cFFF2E699[PM EPGP]|r Notes wiped.")
+end
+
 function PM:EditPoints(members, mode, value, reason, rewardedid)
 	if not PM.IsOfficer then return end
 	if not DB:IsCurrentState() then return end
