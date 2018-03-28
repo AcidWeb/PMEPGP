@@ -922,6 +922,19 @@ function PM:WipeNotes()
 	print("|cFFF2E699[PM EPGP]|r Notes wiped.")
 end
 
+function PM:RestoreBackup(id)
+	if not PM.IsOfficer then return end
+
+	local status, payload = SER:Deserialize(PM.Settings.Backup[id])
+	if status then
+	  for key, value in pairs(payload) do
+	    DB:SetNote(key, value)
+	  end
+	end
+
+	print("|cFFF2E699[PM EPGP]|r Backup restored.")
+end
+
 function PM:EditPoints(members, mode, value, reason, rewardedid)
 	if not PM.IsOfficer then return end
 	if not DB:IsCurrentState() then return end
