@@ -40,7 +40,7 @@ local CalendarEventGetNumInvites = _G.CalendarEventGetNumInvites
 local CalendarEventGetInvite = _G.CalendarEventGetInvite
 local CalendarGetDate = _G.CalendarGetDate
 
-PM.Version = 131
+PM.Version = 132
 PM.GuildData = {}
 PM.AltData = {}
 PM.AltIndex = {}
@@ -1014,7 +1014,7 @@ function PM:EditPointsDecay()
 	for name, data in pairs(PM.GuildData) do
 		if data.EP > 0 or data.GP > 0 then
 			data.EP = PM:Round(data.EP * (1 - (PM.Config.Decay / 100)), 0)
-			data.GP = PM:Round(data.GP - ((data.GP + PM.Config.BaseGP) * (1 - (PM.Config.Decay / 100))), 0)
+			data.GP = PM:Round(((data.GP + PM.Config.BaseGP) * (1 - (PM.Config.Decay / 100))) - PM.Config.BaseGP, 0)
 			if data.EP < 0 then data.EP = 0 end
 			if data.GP < 0 then data.GP = 0 end
 			DB:SetNote(name, data.EP..","..data.GP)

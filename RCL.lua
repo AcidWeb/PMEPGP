@@ -51,14 +51,18 @@ function PM.SortPR(table, rowa, rowb, sortbycol)
   local rowB = tonumber(b.cols[14].value)
   local rowAEP = false
   local rowBEP = false
-  if rowA ~= -1 then
+  if not rowA then
+    rowA = -1
+  elseif rowA ~= -1 then
     local nameA = strsplit("-", a.name)
     nameA = PM:GetMainName(nameA)
     if nameA then
       rowAEP = PM.GuildData[nameA].EP >= PM.Config.MinEP
     end
   end
-  if rowB ~= -1 then
+  if not rowB then
+    rowB = -1
+  elseif rowB ~= -1 then
     local nameB = strsplit("-", b.name)
     nameB = PM:GetMainName(nameB)
     if nameB then
