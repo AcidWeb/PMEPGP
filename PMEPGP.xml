@@ -2,6 +2,7 @@
 
 	<Script file="PMEPGP.lua"/>
 	<Script file="RCL.lua"/>
+	<Script file="ExRT.lua"/>
 
 	<Frame name="PMEPGPFrame" resizable="false" movable="true" hidden="true" parent="UIParent">
 		<Scripts>

@@ -477,6 +477,7 @@ function PM:OnEvent(self, event, name)
 		})
 
 		PM:RCLHook()
+		PM:ExRTHook()
 		COM:RegisterComm("PMEPGP", PM.OnAddonMsg)
 		COM:SendCommMessage("PMEPGP", SER:Serialize("V;"..PM.Version), "GUILD", nil, "NORMAL")
 		DB.RegisterCallback(self, "GuildNoteChanged", PM.OnGuildNoteChanged)
@@ -927,9 +928,9 @@ function PM:RestoreBackup(id)
 
 	local status, payload = SER:Deserialize(PM.Settings.Backup[id])
 	if status then
-	  for key, value in pairs(payload) do
-	    DB:SetNote(key, value)
-	  end
+		for key, value in pairs(payload) do
+			DB:SetNote(key, value)
+		end
 	end
 
 	print("|cFFF2E699[PM EPGP]|r Backup restored.")
