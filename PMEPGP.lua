@@ -62,18 +62,22 @@ SLASH_PMEPGP3 = "/pm"
 
 PM.OfficerDropDown = {
 	{ text = "Mass EP", notCheckable = true, func = function() DIA:Spawn("PMEPGPMassEdit"); _G.L_CloseDropDownMenus() end },
-	{ text = "Decay", notCheckable = true, func = function() DIA:Spawn("PMEPGPDecayWarning"); _G.L_CloseDropDownMenus() end },
-	{ text = "Logs", notCheckable = true, func = function() PM:ShowLogs(); _G.L_CloseDropDownMenus() end },
 	{ text = "Fill reserve", notCheckable = true, func = function() PM:FillReserve(); _G.L_CloseDropDownMenus() end },
 	{ text = "Find deserters", notCheckable = true, func = function() PM:FindDeserters(); _G.L_CloseDropDownMenus() end },
+	{ text = "Clear custom filter", notCheckable = true, func = function() PM.Settings.CustomFilter = {}; if PM.SBFilter == "CUSTOM" then PM.ScoreBoard:SetFilter(PM.ScoreBoardFilter) end; _G.L_CloseDropDownMenus() end },
+	{ text = "", notCheckable = true, disabled = true },
+	{ text = "Logs", notCheckable = true, func = function() PM:ShowLogs(); _G.L_CloseDropDownMenus() end },
 	{ text = "Export logs", notCheckable = true, func = function() PM:ExportLogs(); _G.L_CloseDropDownMenus() end },
+	{ text = "Decay", notCheckable = true, func = function() DIA:Spawn("PMEPGPDecayWarning"); _G.L_CloseDropDownMenus() end },
+	{ text = "", notCheckable = true, disabled = true },
 	{ text = "Check notes", notCheckable = true, func = function() PM:CheckNotes(); _G.L_CloseDropDownMenus() end },
 	{ text = "Setup notes", notCheckable = true, func = function() PM:SetNotes(); _G.L_CloseDropDownMenus() end },
 }
 PM.PlayerDropDown = {
 	{ text = "Edit points", notCheckable = true, func = function() DIA:Spawn("PMEPGPPlayerEdit", PM.ClickedPlayer); _G.L_CloseDropDownMenus() end },
-	{ text = "Show logs", notCheckable = true, func = function() PM:ShowLogs(PM.ClickedPlayer); _G.L_CloseDropDownMenus() end },
 	{ text = "Toggle reserve status", notCheckable = true, func = function() PM:AddToCustomField(PM.ClickedPlayer, PM.Reserve, "reserve"); _G.L_CloseDropDownMenus() end },
+	{ text = "Show logs", notCheckable = true, func = function() PM:ShowLogs(PM.ClickedPlayer); _G.L_CloseDropDownMenus() end },
+	{ text = "", notCheckable = true, disabled = true },
 	{ text = "Slap", notCheckable = true, func = function() PM:EditPoints(PM.ClickedPlayer, "EP", -50, "*slap*"); _G.L_CloseDropDownMenus() end },
 }
 PM.Armors = {
