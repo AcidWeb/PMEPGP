@@ -40,7 +40,7 @@ local CalendarEventGetNumInvites = _G.CalendarEventGetNumInvites
 local CalendarEventGetInvite = _G.CalendarEventGetInvite
 local CalendarGetDate = _G.CalendarGetDate
 
-PM.Version = 132
+PM.Version = 140
 PM.GuildData = {}
 PM.AltData = {}
 PM.AltIndex = {}
@@ -48,6 +48,7 @@ PM.TableData = {}
 PM.TableIndex = {}
 PM.LogIndex = {}
 PM.Reserve = {}
+PM.AwardCache = {}
 PM.Config = {["BaseGP"] = 1, ["Decay"] = 0, ["MinEP"] = 0, ["EAM"] = 100}
 PM.DefaultSettings = {["Log"] = {}, ["Backup"] = {}, ["CustomFilter"] = {}}
 PM.SBFilter = "ALL"
@@ -455,7 +456,15 @@ function PM:OnEvent(self, event, name)
 						local value = tonumber(self.editboxes[1]:GetText())
 						if value then
 							local name = strsplit("-", PM.Loot.awarded)
+							local nameprevious = strsplit("-", PM.Loot.previous)
 							PM:EditPoints(name, "GP", value, PM.Loot.link)
+							PM.AwardCache[name] = value
+							if #nameprevious > 0 then
+								TAfter(2, function()
+									PM:EditPoints(nameprevious, "GP", PM.AwardCache[nameprevious] * -1, PM.Loot.link)
+									PM.AwardCache[nameprevious] = nil
+								end)
+							end
 							return false
 						else
 							print("|cFFF2E699[PM EPGP]|r The value must be a number!")
@@ -467,7 +476,15 @@ function PM:OnEvent(self, event, name)
 					text = "Give for free",
 					on_click = function(_)
 						local name = strsplit("-", PM.Loot.awarded)
+						local nameprevious = strsplit("-", PM.Loot.previous)
 						PM:EditPoints(name, "GP", 0, PM.Loot.link)
+						PM.AwardCache[name] = 0
+						if #nameprevious > 0 then
+							TAfter(2, function()
+								PM:EditPoints(nameprevious, "GP", PM.AwardCache[nameprevious] * -1, PM.Loot.link)
+								PM.AwardCache[nameprevious] = nil
+							end)
+						end
 						return false
 					end,
 				},
