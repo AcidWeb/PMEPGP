@@ -927,6 +927,15 @@ function PM:WipeNotes()
 	print("|cFFF2E699[PM EPGP]|r Notes wiped.")
 end
 
+function PM:ListBackup()
+	if not PM.IsOfficer then return end
+
+	print("|cFFF2E699[PM EPGP]|r Available backups:")
+	for key, _ in pairs(PM.Settings.Backup) do
+		print(date("%H:%M %d.%m.%y", key).." - ID: "..key)
+	end
+end
+
 function PM:RestoreBackup(id)
 	if not PM.IsOfficer then return end
 
