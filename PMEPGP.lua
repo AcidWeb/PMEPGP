@@ -1140,7 +1140,7 @@ function PM:ScoreBoardFilter(rowdata)
 				end
 			end
 		end
-	elseif rowdata[2] == 0 then
+	elseif rowdata[2] == 0 and (DB:GetRankID(rowdata[5]) > 5 or DB:GetRankID(rowdata[5]) < 4) then
 		raidFilter = false
 	else
 		raidFilter = true

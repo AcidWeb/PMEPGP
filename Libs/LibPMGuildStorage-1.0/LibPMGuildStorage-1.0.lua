@@ -7,6 +7,8 @@
 --
 -- GetRank(name)
 --
+-- GetRankID(name)
+--
 -- GetOnline(name)
 --
 -- GetGuildInfo(): Returns the guild info text
@@ -114,6 +116,11 @@ end
 function lib:GetRank(name)
   local e = cache[name]
   if e then return e.rank end
+end
+
+function lib:GetRankID(name)
+  local e = cache[name]
+  if e then return e.rankid end
 end
 
 function lib:GetOnline(name)
@@ -266,7 +273,7 @@ local function Frame_OnUpdate(self, elapsed)
 
   for i = index, last_index do
 
-    local name, rank, _, _, _, _, _, note, online, _, class = GetGuildRosterInfo(i)
+    local name, rank, rankid, _, _, _, _, note, online, _, class = GetGuildRosterInfo(i)
     name = Ambiguate(name, "short")
 
     if name then
@@ -278,6 +285,7 @@ local function Frame_OnUpdate(self, elapsed)
       end
 
       entry.rank = rank
+      entry.rankid = rankid
       entry.class = class
       entry.online = online
 
