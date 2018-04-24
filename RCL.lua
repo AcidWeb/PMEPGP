@@ -12,7 +12,7 @@ function PM:RCLGetLootData(id, _, _, reason)
   if difficulty == 16 or PM.Settings.Debug then
     PM.Loot = {PM.RCL:GetModule("RCVotingFrame"):GetLootTable()[id], reason}
     local previous = PM.Loot[1].awarded or ""
-    TAfter(0.5, function()
+    TAfter(1, function()
       if not PM.Loot[2] and PM.Loot[1].awarded then
         PM.Loot = PM.Loot[1]
         PM.Loot.previous = previous

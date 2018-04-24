@@ -40,7 +40,7 @@ local CalendarEventGetNumInvites = _G.CalendarEventGetNumInvites
 local CalendarEventGetInvite = _G.CalendarEventGetInvite
 local CalendarGetDate = _G.CalendarGetDate
 
-PM.Version = 140
+PM.Version = 141
 PM.GuildData = {}
 PM.AltData = {}
 PM.AltIndex = {}
@@ -248,6 +248,7 @@ function PM:OnEvent(self, event, name)
 			height = 175,
 			hide_on_escape = true,
 			is_exclusive = true,
+			show_while_dead = true,
 			on_hide = function(self)
 				self.text:SetTextColor(1, 1, 1, 1)
 			end,
@@ -333,6 +334,7 @@ function PM:OnEvent(self, event, name)
 			height = 240,
 			hide_on_escape = true,
 			is_exclusive = true,
+			show_while_dead = true,
 			text = "All players currently displayed in main window will be affected with this operation.",
 			on_show = function(self)
 				self.editboxes[1]:SetText(GetZoneText())
@@ -409,6 +411,7 @@ function PM:OnEvent(self, event, name)
 			height = 90,
 			hide_on_escape = true,
 			is_exclusive = true,
+			show_while_dead = true,
 			no_close_button = true,
 			on_show = function(self)
 				self.text:SetText("Are you sure you want to execute "..tostring(PM.Config.Decay).."% decay?")
@@ -436,6 +439,7 @@ function PM:OnEvent(self, event, name)
 			height = 115,
 			hide_on_escape = true,
 			is_exclusive = true,
+			show_while_dead = true,
 			text = "",
 			on_show = function(self)
 				local gp, gpdetails = PM:GetGP()
@@ -968,7 +972,7 @@ end
 
 function PM:EditPoints(members, mode, value, reason, rewardedid)
 	if not PM.IsOfficer then return end
-	if not DB:IsCurrentState() then return end
+	if not DB:IsCurrentState() then print("|cFFF2E699[PM EPGP]|r Database is not ready. Please try again."); return end
 
 	local success = false
 	local rewarded = {}
@@ -993,8 +997,15 @@ function PM:EditPoints(members, mode, value, reason, rewardedid)
 			tinsert(rewarded, members[i])
 			rewardedid[name] = true
 			DB:SetNote(name, player.EP..","..player.GP)
-			if DB:GetOnline(members[i]) then
-				COM:SendCommMessage("PMEPGP", SER:Serialize("A;"..PM.Version..";"..mode..";"..value), "WHISPER", members[i], "ALERT")
+			if DB:GetOnline(name) then
+				COM:SendCommMessage("PMEPGP", SER:Serialize("A;"..PM.Version..";"..mode..";"..value), "WHISPER", name, "ALERT")
+			else
+				for _, alt in pairs(PM:FindAlts(name)) do
+					if DB:GetOnline(alt) then
+						COM:SendCommMessage("PMEPGP", SER:Serialize("A;"..PM.Version..";"..mode..";"..value), "WHISPER", alt, "ALERT")
+						break
+					end
+				end
 			end
 		end
 	end
